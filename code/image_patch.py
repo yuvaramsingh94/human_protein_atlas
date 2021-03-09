@@ -36,7 +36,7 @@ def img_splitter(im_tok):
         cropped_arr = masked_img[top_left[0]:bottom_right[0]+1,top_left[1]:bottom_right[1]+1]
         #print(cropped_arr.shape)
         #print('Area: ',cropped_arr.shape[0] * cropped_arr.shape[1])
-        if cropped_arr.shape[0] * cropped_arr.shape[1] > 100000:
+        if cropped_arr.shape[0] * cropped_arr.shape[1] > 30000:
             cropped_arr = resize(cropped_arr, (224, 224))
             #area_list.append(cropped_arr.shape[0] * cropped_arr.shape[1]
             crop_img_list.append(cropped_arr)

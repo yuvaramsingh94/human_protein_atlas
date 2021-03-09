@@ -3,3 +3,4 @@
 *.csv
 *.hdf5
 .ipynb_checkpoints/
+*.pyc
