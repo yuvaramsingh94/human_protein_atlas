@@ -1,6 +1,6 @@
 
 import torch
-from utils import set_seed, score_metrics
+from utils import set_seed, score_metrics, hpa_dataset_v1
 from model import HpaModel
 import pandas as pd
 import os
@@ -16,6 +16,7 @@ import gc
 import shutil
 import argparse
 import configparser
+import random
 
 
 
@@ -28,53 +29,27 @@ parser.add_argument('config_file', metavar='N', type=str, nargs='+',
                     help='configuration file path')
 
 
-def train(model,train_dataloader,optimizer,criterion, MIXUP = False):
+def train(model,train_dataloader,optimizer,criterion):
     model.train()
     #print('model.training = ',model.training)
     train_loss_loop_list = []
-    LWLRAP_loop_list = []
     for data_t in tqdm(train_dataloader):
-        X, Y = data_t['waveform'],data_t['targets']
-        #print(X.shape)
+        X, Y = data_t['image'],data_t['label']
         X = X.to(device, dtype=torch.float)
         Y = Y.to(device, dtype=torch.float)
-        mixup_lambda = None
-        if MIXUP and X.shape[0]%2 == 0:
-            mixup_lambda = mixup_values.get_lambda(int(X.shape[0]))
-            mixup_lambda = mixup_lambda.to(device, dtype=torch.float)
-            #Y = torch.logical_or(Y[0::2], Y[1::2])*1.0
-            Y = (Y[0::2].transpose(0, -1) * mixup_lambda[0::2] + Y[1::2].transpose(0, -1) * mixup_lambda[1::2]).transpose(0, -1)
-            #print('Mix')
-        #print("X shape ",X.shape)
-        #print('Y ',Y.shape)
+        X = X.permute(0,1,4,2,3)
+        #print('Y shape ',Y)
         optimizer.zero_grad()
-
-        #with amp.autocast():
-        prediction = model(X, mixup_lambda = mixup_lambda)
-        #print(prediction["clipwise_output"].max())
-        if prediction["clipwise_output"].min().item() < 0. or prediction["clipwise_output"].max().item() >1.:
-            print(f'prediction broke {prediction["clipwise_output"].min().item()} {prediction["clipwise_output"].max().item()}',)
-        train_loss = criterion(prediction, Y) + lsep_loss_stable(prediction["clipwise_output"], Y)
-        #train_loss = lsep_loss_stable(prediction["clipwise_output"], Y)
-        
+        prediction = model(X)
+        train_loss = criterion(prediction['final_output'], Y) 
         train_loss.backward()
         optimizer.step()
         train_loss_loop_list.append(train_loss.item())
-        #lwlrap_metric = LWLRAP(torch.sigmoid(prediction["clipwise_output"]), Y, device= device)
-        lwlrap_metric = LWLRAP(prediction["clipwise_output"], Y, device= device)
-                
-        LWLRAP_loop_list.append(lwlrap_metric if not math.isnan(lwlrap_metric) else 0.0 )
-
 
     train_total_loss = np.array(train_loss_loop_list)
     train_total_loss = train_total_loss.sum() / len(train_total_loss)
-    
-    LWLRAP_loop_list = np.array(LWLRAP_loop_list)
-    LWLRAP_loop_list = LWLRAP_loop_list.sum() / len(LWLRAP_loop_list)
 
-
-
-    print(f" \n train loss : {train_total_loss} LWLRAP {LWLRAP_loop_list}")
+    print(f" \n train loss : {train_total_loss}")
     return train_total_loss
 
 
@@ -82,39 +57,29 @@ def validation(model,valid_dataloader,criterion):
     model.eval()
     #print('model.training = ',model.training)
     valid_loss_loop_list = []
-    LWLRAP_loop_list = []
     AUROC_loop_list = []
     F1_loop_list = []
     with torch.no_grad():
         for data_t in tqdm(valid_dataloader):
 
-            X, Y = data_t['waveform'],data_t['targets']
-
-
+            X, Y = data_t['image'],data_t['label']
 
             X = X.to(device, dtype=torch.float)
             Y = Y.to(device, dtype=torch.float)
-            #print("X shape ",X.shape)
-            #print("X shape ",Y)
-
+            X = X.permute(0,1,4,2,3)
             prediction = model(X)
 
-            valid_loss = criterion(prediction, Y) + lsep_loss_stable(prediction["clipwise_output"], Y)
+            valid_loss = criterion(prediction['final_output'], Y)
             valid_loss_loop_list.append(valid_loss.detach().cpu().item())
 
-            lwlrap_metric = LWLRAP(prediction["clipwise_output"], Y, device= device)
-            scores = score_metrics(prediction["clipwise_output"], Y)
-            #print(scores)
-            LWLRAP_loop_list.append(lwlrap_metric if not math.isnan(lwlrap_metric) else 0.0 )
-            AUROC_loop_list.append(scores['AUROC'] if not math.isnan(lwlrap_metric) else 0.0 )
-            F1_loop_list.append(scores['F1_score'] if not math.isnan(lwlrap_metric) else 0.0 )
+            scores = score_metrics(prediction['final_output'], Y)
+
+            AUROC_loop_list.append(scores['AUROC']  )
+            F1_loop_list.append(scores['F1_score']  )
 
 
     valid_total_loss = np.array(valid_loss_loop_list)
     valid_total_loss = valid_total_loss.sum() / len(valid_total_loss)
-    
-    LWLRAP_loop_list = np.array(LWLRAP_loop_list)
-    LWLRAP_loop_list = LWLRAP_loop_list.sum() / len(LWLRAP_loop_list)
 
     AUROC_loop_list = np.array(AUROC_loop_list)
     AUROC_loop_list = AUROC_loop_list.sum() / len(AUROC_loop_list)
@@ -124,53 +89,17 @@ def validation(model,valid_dataloader,criterion):
 
 
     #valid_total_loss = 0.0
-    print(f" \n valid loss : {valid_total_loss} LWLRAP {LWLRAP_loop_list}")
-    return valid_total_loss, LWLRAP_loop_list, {'AUROC':AUROC_loop_list,'F1_score':F1_loop_list}
-
-
-
-def master_validation(model,bet_df):
-    model.eval()
-    print('model.training = ',model.training)
-    LWLRAP_loop_list = []
-    
-    master_dataset = master_val_dataset_v2(main_df = bet_df, 
-                                              path = DATA_PATH)
-    
-    
-    master_dataloader = data.DataLoader(
-        master_dataset,
-        batch_size=16,
-        shuffle=False,
-        num_workers=WORKERS,
-        drop_last=False,
-        pin_memory=False,
-    )
-    
-    with torch.no_grad():
-        
-        LWLRAP_loop_list = []
-        for data_t in tqdm(master_dataloader):
-
-            X, Y = data_t['waveform'],data_t['targets']
-            X = X.to(device, dtype=torch.float)
-            Y = Y.to(device, dtype=torch.float)
-            prediction = model(X)
-            #lwlrap_metric = LWLRAP(torch.sigmoid(prediction["clipwise_output"]), Y, device= device)
-            lwlrap_metric = LWLRAP(prediction["clipwise_output"], Y, device= device)
-            LWLRAP_loop_list.append(lwlrap_metric if not math.isnan(lwlrap_metric) else 0.0 ) 
-    LWLRAP_loop_list = np.array(LWLRAP_loop_list)
-    LWLRAP_loop_list = LWLRAP_loop_list.sum() / len(LWLRAP_loop_list)
-    print(f"LWLRAP master {LWLRAP_loop_list}")
-    return LWLRAP_loop_list
-
-
+    print(f" \n valid loss : {valid_total_loss}")
+    return valid_total_loss, {'AUROC':AUROC_loop_list,'F1_score':F1_loop_list}
 
 
 def run(fold):
 
-    train_dataset = rfcx_dataset_v3(main_df = train_df, path = DATA_PATH, effective_sec= effective_sec, augmentation = transform, aug_per= 0.4, is_mixing = True, mix_per = 0.4)
-    valid_dataset_segment = rfcx_dataset_v2(main_df = valid_df, path = DATA_PATH, effective_sec= effective_sec, augmentation = None, is_validation_full = False)
+    train_df = train_base_df[train_base_df['fold'] != fold]
+    valid_df = train_base_df[train_base_df['fold'] == fold]
+
+    train_dataset = hpa_dataset_v1(main_df = train_df[:20], path = DATA_PATH, augmentation = None, aug_per= 0.0, cells_used = 8)
+    valid_dataset = hpa_dataset_v1(main_df = valid_df[:20], path = DATA_PATH, cells_used = 8, is_validation = True)
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}"):
         os.mkdir(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}")
@@ -195,7 +124,7 @@ def run(fold):
         )
 
     valid_dataloader = data.DataLoader(
-        valid_dataset_segment,
+        valid_dataset,
         batch_size=BATCH_SIZE,
         shuffle=True,
         num_workers=WORKERS,
@@ -203,28 +132,26 @@ def run(fold):
         pin_memory=True,
         
     )
-
-
+    model = HpaModel(classes = int(config['general']['classes']), device = device, 
+                        base_model_name = config['general']['pretrained_model'], 
+                        features = int(config['general']['feature']), pretrained = True)
+    model = model.to(device)
     # Optimizer
     optimizer = optim.AdamW(model.parameters(), lr= LR)
 
     # Scheduler
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCH)
 
-    # Loss
-    criterion = loss()
-
     best_val_AUROC = 0.0
     best_val_F1_score = 0.0
     for epoch in range (EPOCH):
-        train_loss = train(model,train_dataloader,optimizer,criterion, MIXUP = False)
-        val_loss, val_LWLRAP,val_scores = validation(model,valid_dataloader,criterion)
+        train_loss = train(model,train_dataloader,optimizer,criterion)
+        val_loss,val_scores = validation(model,valid_dataloader,criterion)
         scheduler.step()
         print('EPOCH ',epoch)
 
         writer.add_scalar('Loss/train', train_loss, epoch)
         writer.add_scalar('Loss/valid', val_loss, epoch)
-        writer.add_scalar('LWLRAP/valid', val_LWLRAP, epoch)
 
         writer.add_scalar('AUROC/valid', val_scores['AUROC'], epoch)
         writer.add_scalar('F1_score/valid', val_scores['F1_score'], epoch)
@@ -258,7 +185,7 @@ def run(fold):
     
     
 if __name__ == "__main__":
-
+    print(os.getcwd())
     args = parser.parse_args()
     SEED = args.seed[0]
     print('setting seed to ',SEED)
@@ -270,18 +197,26 @@ if __name__ == "__main__":
     config.read(args.config_file[0])
 
 
-    FOLDS = config['general']['fold']
+    FOLDS = int(config['general']['folds'])
     DATA_PATH = config['general']['data_path']
-    BATCH_SIZE = config['general']['batch_size']
-    WORKERS = config['general']['workers']
-    EPOCH = config['general']['epoch']
+    BATCH_SIZE = int(config['general']['batch_size'])
+    WORKERS = int(config['general']['workers'])
+    EPOCH = int(config['general']['epoch'])
     WEIGHT_SAVE = config['general']['weight_save_version']
-    LR = config['general']['lr']
-    train_base_df = config['general']['data_csv']
+    LR = float(config['general']['lr'])
+    print('LR ',LR, type(LR))
+    train_base_df = pd.read_csv(config['general']['data_csv'])
+    #train_base_df = pd.read_csv('data/train_fold_v1.csv')
+    if config['general']['loss'] == 'BCE':
+        criterion = nn.BCELoss()
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}"):
         os.mkdir(f"weights/{WEIGHT_SAVE}")
 
 
-    for fold in FOLDS:
+    for fold in range(FOLDS):
+        print('FOLD ',fold)
+        print('This is the first rand no ',random.randint(2,50))
+        print('This is the sec rand no ',random.randint(2,50))
+        print('This is the 3 rand no ',random.randint(2,50))
         run(fold)

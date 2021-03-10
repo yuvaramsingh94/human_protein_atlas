@@ -4,3 +4,5 @@
 *.hdf5
 .ipynb_checkpoints/
 *.pyc
+*.pth
+log_dir/
