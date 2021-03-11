@@ -10,6 +10,8 @@ from joblib import delayed, Parallel
 
 train_df = pd.read_csv('data/train.csv')
 
+AREA = 30000
+
 def img_splitter(im_tok):
     #img_filename = img_token+'.png'
     
@@ -36,14 +38,14 @@ def img_splitter(im_tok):
         cropped_arr = masked_img[top_left[0]:bottom_right[0]+1,top_left[1]:bottom_right[1]+1]
         #print(cropped_arr.shape)
         #print('Area: ',cropped_arr.shape[0] * cropped_arr.shape[1])
-        if cropped_arr.shape[0] * cropped_arr.shape[1] > 30000:
+        if cropped_arr.shape[0] * cropped_arr.shape[1] > AREA:
             cropped_arr = resize(cropped_arr, (224, 224))
             #area_list.append(cropped_arr.shape[0] * cropped_arr.shape[1]
             crop_img_list.append(cropped_arr)
             
             #pass
     crop_img_arr = np.array(crop_img_list)
-    hdf5_path = os.path.join('data/train_h5_224',f'{im_tok}.hdf5')
+    hdf5_path = os.path.join(f'data/train_h5_224_{AREA}',f'{im_tok}.hdf5')
     hdf5_file = h5py.File(hdf5_path, mode='w')
     hdf5_file.create_dataset("train_img",crop_img_arr.shape,np.float)
     hdf5_file["train_img"][...] = crop_img_arr

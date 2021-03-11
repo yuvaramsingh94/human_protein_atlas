@@ -69,5 +69,6 @@ v = {'token':file_name,'total_cell_mask':total_cell_mask,'selected_cells':select
 v_df = pd.DataFrame.from_dict(v)
 v_df.to_csv('data/cell_mask_study_v3.csv')
 
+#v1 = 30000
 #v2 = 70000
 #v3 = 100000

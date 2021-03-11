@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import transforms
+from utils import Normalize
 
 class Autopool(nn.Module):
     def __init__(
@@ -47,6 +49,13 @@ class HpaSub(nn.Module):
 class HpaModel(nn.Module):
     def __init__(self, classes, device, base_model_name, pretrained, features):
         super(HpaModel, self).__init__()
+
+        mean_list = [0.083170892049318, 0.08627143702844145, 0.05734662013795027, 0.06582942296076659]
+        std_list = [0.13561066140407024, 0.13301454127989584, 0.09142918497144226, 0.15651865713966945]
+        self.transform=transforms.Compose([Normalize(mean= mean_list,
+                              std= std_list,
+                              device = device)])
+
         base_model = torch.hub.load('pytorch/vision', base_model_name, pretrained=pretrained)
         #print(base_model)
         #print('the list ',list(base_model.children()))
@@ -62,7 +71,7 @@ class HpaModel(nn.Module):
 
     def forward(self, x):
         batch_size, cells, C, H, W = x.size()
-        c_in = x.view(batch_size * cells, C, H, W)
+        c_in = self.transform(x.view(batch_size * cells, C, H, W))
         #print('input c_in ',c_in.shape)
         c_in = F.relu(self.init_layer(c_in))
         #print('init layer c_in ',c_in.shape)

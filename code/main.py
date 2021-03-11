@@ -98,8 +98,10 @@ def run(fold):
     train_df = train_base_df[train_base_df['fold'] != fold]
     valid_df = train_base_df[train_base_df['fold'] == fold]
 
-    train_dataset = hpa_dataset_v1(main_df = train_df[:20], path = DATA_PATH, augmentation = None, aug_per= 0.0, cells_used = 8)
-    valid_dataset = hpa_dataset_v1(main_df = valid_df[:20], path = DATA_PATH, cells_used = 8, is_validation = True)
+    print(f'Train df {train_df.shape} valid df {valid_df.shape}')
+
+    train_dataset = hpa_dataset_v1(main_df = train_df, path = DATA_PATH, augmentation = None, aug_per= 0.0, cells_used = cells_used)
+    valid_dataset = hpa_dataset_v1(main_df = valid_df, path = DATA_PATH, cells_used = cells_used, is_validation = True)
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}"):
         os.mkdir(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}")
@@ -204,6 +206,7 @@ if __name__ == "__main__":
     EPOCH = int(config['general']['epoch'])
     WEIGHT_SAVE = config['general']['weight_save_version']
     LR = float(config['general']['lr'])
+    cells_used = int(config['general']['cells_used'])
     print('LR ',LR, type(LR))
     train_base_df = pd.read_csv(config['general']['data_csv'])
     #train_base_df = pd.read_csv('data/train_fold_v1.csv')
