@@ -1,0 +1,29 @@
+done on train_h5_224_3000 and train_h5_224_3000_v2
+
+train_h5_224_3000 has one h5 file per token with multiple cells in it
+train_h5_224_3000_v2 has invidual files per cell within the token
+
+Aim: to see whcih is the fastest way to load and process the required cell count out of these files
+
+
+*jp notebook exe are done on 5c1a898e-bb99-11e8-b2b9-ac1f6b6435d0 which has 17 cells
+
+train_h5_224_3000
+    on dataloader :
+    reading h5 + processing (selecting the desired no of cells or generating zeros)
+        workers: 20
+        approx
+
+
+    on jp notebook:
+        start = time.time()
+        hdf5_path = os.path.join(f'../data/train_h5_224_30000',f'{"5c1a898e-bb99-11e8-b2b9-ac1f6b6435d0"}.hdf5')
+        hdf5_file = h5py.File(hdf5_path,"r")
+        train_x = hdf5_file['train_img'][...]
+        hdf5_file.close()
+        end = time.time()
+        print('{} sec'.format(end-start))
+
+    Time:
+        to load all the cells : 0.02742171287536621 sec
+

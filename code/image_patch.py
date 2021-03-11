@@ -11,6 +11,7 @@ from joblib import delayed, Parallel
 train_df = pd.read_csv('data/train.csv')
 
 AREA = 30000
+version = 'v2'
 
 def img_splitter(im_tok):
     #img_filename = img_token+'.png'
@@ -25,7 +26,7 @@ def img_splitter(im_tok):
     #print(image.shape,img_mask.shape)
     #area_list = []
     crop_img_list = []
-    
+    count = 0
     for i in range(1, img_mask.max() + 1):
         bmask = img_mask == i
         bmask = np.expand_dims(bmask, axis = -1)
@@ -39,17 +40,21 @@ def img_splitter(im_tok):
         #print(cropped_arr.shape)
         #print('Area: ',cropped_arr.shape[0] * cropped_arr.shape[1])
         if cropped_arr.shape[0] * cropped_arr.shape[1] > AREA:
+            count += 1
             cropped_arr = resize(cropped_arr, (224, 224))
+            if not os.path.exists(f"data/train_h5_224_{AREA}_{version}/{im_tok}"):
+                os.mkdir(f"data/train_h5_224_{AREA}_{version}/{im_tok}")
+
+            hdf5_path = os.path.join(f"data/train_h5_224_{AREA}_{version}/{im_tok}",f'{im_tok}_{count}.hdf5')
+            hdf5_file = h5py.File(hdf5_path, mode='w')
+            hdf5_file.create_dataset("train_img",cropped_arr.shape,np.float)
+            hdf5_file["train_img"][...] = cropped_arr
+            hdf5_file.close()
+            
+
             #area_list.append(cropped_arr.shape[0] * cropped_arr.shape[1]
             crop_img_list.append(cropped_arr)
-            
-            #pass
-    crop_img_arr = np.array(crop_img_list)
-    hdf5_path = os.path.join(f'data/train_h5_224_{AREA}',f'{im_tok}.hdf5')
-    hdf5_file = h5py.File(hdf5_path, mode='w')
-    hdf5_file.create_dataset("train_img",crop_img_arr.shape,np.float)
-    hdf5_file["train_img"][...] = crop_img_arr
-    hdf5_file.close()
+
 
 img_token_list = train_df['ID'].values
 

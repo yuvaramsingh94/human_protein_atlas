@@ -77,7 +77,8 @@ class hpa_dataset_v1(data.Dataset):
         #print(train_x.shape)
         hdf5_file.close()
         end_time = time.time()
-        #print("{} seconds".format(end_time-start_time))
+        #print("{} opening seconds".format(end_time-start_time))
+        
         #print(train_x.shape)
         #check for the cell count 
         cell_count = train_x.shape[0]
@@ -101,7 +102,8 @@ class hpa_dataset_v1(data.Dataset):
             train_img = np.concatenate([train_x, zero_arr], axis=0)
             target_vec[-1] = 1# as we are adding black img . negative = 1 also
 
-
+        end_time = time.time()
+        #print("{} seconds".format(end_time-start_time))
         return {'image' : torch.from_numpy(train_img), 'label' : torch.from_numpy(target_vec)}
 
 def score_metrics(preds, labels):
