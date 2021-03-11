@@ -14,6 +14,10 @@ train_h5_224_3000
         workers: 20
         approx
 
+    on train iteration:
+        first 11.51
+        sec   11:58
+
 
     on jp notebook:
         start = time.time()
@@ -26,4 +30,8 @@ train_h5_224_3000
 
     Time:
         to load all the cells : 0.02742171287536621 sec
+
+    on train iteration:
+        first 11.54
+        sec   11.54
 

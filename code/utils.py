@@ -67,42 +67,54 @@ class hpa_dataset_v1(data.Dataset):
 
         target_vec = info[self.label_col].values.astype(np.int)
 
-        hdf5_path = os.path.join(self.path,f'{ids}.hdf5')
-        #print(hdf5_path)
-        start_time = time.time()
-        hdf5_file = h5py.File(hdf5_path,"r")
-        end_time = time.time()
-        #print("{} opening seconds".format(end_time-start_time))
-        train_x = hdf5_file['train_img'][...]
-        #print(train_x.shape)
-        hdf5_file.close()
-        end_time = time.time()
-        #print("{} opening seconds".format(end_time-start_time))
-        
-        #print(train_x.shape)
-        #check for the cell count 
-        cell_count = train_x.shape[0]
+        # lets begin
+        cell_count = len(os.listdir(os.path.join(self.path,f'{ids}')))
 
         if cell_count == self.cells_used:
-            train_img = train_x
+            cell_list = []
+            for i in range(1, self.cells_used + 1):
+                hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
+                with h5py.File(hdf5_path,"r") as h:
+                    cell_list.append(h['train_img'][...])
+            train_img = np.array(cell_list)
+                    
         elif cell_count > self.cells_used:#random downsample
             if not self.is_validation:
-                rand_idx = [i for i in range(0,cell_count)]
+                rand_idx = [i for i in range(1,cell_count + 1)]
                 #print('random idx ', rand_idx)
                 random.shuffle(rand_idx)
                 #print('random idx ', rand_idx)
-                train_img = train_x[rand_idx[:self.cells_used],:,:,:]
-                #print(train_img.shape)
+                cell_list = []
+                for i in rand_idx[:self.cells_used]:
+                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
+                    with h5py.File(hdf5_path,"r") as h:
+                        cell_list.append(h['train_img'][...])
+                train_img = np.array(cell_list)
+                    
             else:
-                train_img = train_x[:self.cells_used,:,:,:]#for now just taking top counts.
+                cell_list = []
+                for i in range(1, self.cells_used + 1):
+                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
+                    with h5py.File(hdf5_path,"r") as h:
+                        cell_list.append(h['train_img'][...])
+                train_img = np.array(cell_list)
 
         elif cell_count < self.cells_used:# add zero images
-            shape = (self.cells_used - cell_count, train_x.shape[1], train_x.shape[2], train_x.shape[3])
+            #print('in the less class')
+            cell_list = []
+            for i in range(1, cell_count):
+                hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
+                with h5py.File(hdf5_path,"r") as h:
+                    cell_list.append(h['train_img'][...])
+            train_img = np.array(cell_list)
+            shape = (self.cells_used - cell_count + 1, 224, 224, 4)
             zero_arr = np.zeros(shape, dtype=float)
-            train_img = np.concatenate([train_x, zero_arr], axis=0)
+            #print('zero_arr ',zero_arr.shape)
+            #print('train_img ',train_img.shape)
+            train_img = np.concatenate([train_img, zero_arr], axis=0)
             target_vec[-1] = 1# as we are adding black img . negative = 1 also
 
-        end_time = time.time()
+        #print('this is the shape ', train_img.shape)
         #print("{} seconds".format(end_time-start_time))
         return {'image' : torch.from_numpy(train_img), 'label' : torch.from_numpy(target_vec)}
 
