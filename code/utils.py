@@ -49,7 +49,7 @@ class Normalize:
 class hpa_dataset_v1(data.Dataset):
     def __init__(self, main_df, augmentation = None, path=None,  aug_per = 0.0, cells_used = 8, is_validation = False):
         self.main_df = main_df
-        self.aug_per = aug_per
+        self.aug_percent = aug_per
         self.augmentation = augmentation
         self.label_col = [str(i) for i in range(19)]
         self.cells_used = cells_used
@@ -69,29 +69,61 @@ class hpa_dataset_v1(data.Dataset):
 
         # lets begin
         cell_count = len(os.listdir(os.path.join(self.path,f'{ids}')))
+        
+        if not self.is_validation:
 
-        if cell_count == self.cells_used:
-            cell_list = []
-            for i in range(1, self.cells_used + 1):
-                hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
-                with h5py.File(hdf5_path,"r") as h:
-                    cell_list.append(h['train_img'][...])
-            train_img = np.array(cell_list)
-                    
-        elif cell_count > self.cells_used:#random downsample
-            if not self.is_validation:
-                rand_idx = [i for i in range(1,cell_count + 1)]
-                #print('random idx ', rand_idx)
-                random.shuffle(rand_idx)
-                #print('random idx ', rand_idx)
+            if cell_count == self.cells_used:
                 cell_list = []
-                for i in rand_idx[:self.cells_used]:
+                for i in range(1, self.cells_used + 1):
+                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
+                    with h5py.File(hdf5_path,"r") as h:
+                        vv = h['train_img'][...]
+                        if random.random() < self.aug_percent:
+                            vv = self.augmentation(image= vv)["image"]
+                        cell_list.append(vv)
+                train_img = np.array(cell_list)
+                        
+            elif cell_count > self.cells_used:#random downsample
+
+                cell_list = []
+                for i in range(1, self.cells_used + 1):
+                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
+                    with h5py.File(hdf5_path,"r") as h:
+                        vv = h['train_img'][...]
+                        if random.random() < self.aug_percent:
+                            #print('augmentation')
+                            vv = self.augmentation(image= vv)["image"]
+                        cell_list.append(vv)
+                train_img = np.array(cell_list)
+
+            elif cell_count < self.cells_used:# add zero images
+                #print('in the less class')
+                cell_list = []
+                for i in range(1, cell_count):
+                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
+                    with h5py.File(hdf5_path,"r") as h:
+                        vv = h['train_img'][...]
+                        if random.random() < self.aug_percent:
+                            vv = self.augmentation(image= vv)["image"]
+                        cell_list.append(vv)
+                train_img = np.array(cell_list)
+                shape = (self.cells_used - cell_count + 1, 224, 224, 4)
+                zero_arr = np.zeros(shape, dtype=float)
+                #print('zero_arr ',zero_arr.shape)
+                #print('train_img ',train_img.shape)
+                train_img = np.concatenate([train_img, zero_arr], axis=0)
+                target_vec[-1] = 1# as we are adding black img . negative = 1 also
+        else:
+            if cell_count == self.cells_used:
+                cell_list = []
+                for i in range(1, self.cells_used + 1):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
                         cell_list.append(h['train_img'][...])
                 train_img = np.array(cell_list)
-                    
-            else:
+                        
+            elif cell_count > self.cells_used:#random downsample
+                
                 cell_list = []
                 for i in range(1, self.cells_used + 1):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
@@ -99,24 +131,24 @@ class hpa_dataset_v1(data.Dataset):
                         cell_list.append(h['train_img'][...])
                 train_img = np.array(cell_list)
 
-        elif cell_count < self.cells_used:# add zero images
-            #print('in the less class')
-            cell_list = []
-            for i in range(1, cell_count):
-                hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
-                with h5py.File(hdf5_path,"r") as h:
-                    cell_list.append(h['train_img'][...])
-            train_img = np.array(cell_list)
-            shape = (self.cells_used - cell_count + 1, 224, 224, 4)
-            zero_arr = np.zeros(shape, dtype=float)
-            #print('zero_arr ',zero_arr.shape)
-            #print('train_img ',train_img.shape)
-            train_img = np.concatenate([train_img, zero_arr], axis=0)
-            target_vec[-1] = 1# as we are adding black img . negative = 1 also
-
+            elif cell_count < self.cells_used:# add zero images
+                #print('in the less class')
+                cell_list = []
+                for i in range(1, cell_count):
+                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
+                    with h5py.File(hdf5_path,"r") as h:
+                        cell_list.append(h['train_img'][...])
+                train_img = np.array(cell_list)
+                shape = (self.cells_used - cell_count + 1, 224, 224, 4)
+                zero_arr = np.zeros(shape, dtype=float)
+                #print('zero_arr ',zero_arr.shape)
+                #print('train_img ',train_img.shape)
+                train_img = np.concatenate([train_img, zero_arr], axis=0)
+                target_vec[-1] = 1# as we are adding black img . negative = 1 also
         #print('this is the shape ', train_img.shape)
         #print("{} seconds".format(end_time-start_time))
-        return {'image' : torch.from_numpy(train_img), 'label' : torch.from_numpy(target_vec)}
+        #return {'image' : torch.from_numpy(train_img), 'label' : torch.from_numpy(target_vec)}
+        return {'image' : train_img, 'label' : target_vec}
 
 def score_metrics(preds, labels):
     preds = preds.detach().cpu().numpy()

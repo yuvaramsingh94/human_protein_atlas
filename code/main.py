@@ -17,6 +17,8 @@ import shutil
 import argparse
 import configparser
 import random
+# https://github.com/albumentations-team/albumentations/blob/master/albumentations/augmentations/transforms.py
+import albumentations as albu
 
 
 
@@ -100,7 +102,7 @@ def run(fold):
 
     print(f'Train df {train_df.shape} valid df {valid_df.shape}')
 
-    train_dataset = hpa_dataset_v1(main_df = train_df, path = DATA_PATH, augmentation = None, aug_per= 0.0, cells_used = cells_used)
+    train_dataset = hpa_dataset_v1(main_df = train_df, path = DATA_PATH, augmentation = aug_fn, aug_per= 0.4, cells_used = cells_used)
     valid_dataset = hpa_dataset_v1(main_df = valid_df, path = DATA_PATH, cells_used = cells_used, is_validation = True)
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}"):
@@ -216,6 +218,22 @@ if __name__ == "__main__":
     if not os.path.exists(f"weights/{WEIGHT_SAVE}"):
         os.mkdir(f"weights/{WEIGHT_SAVE}")
 
+    aug_fn = albu.Compose(
+        [
+            # albu.OneOf([albu.RandomBrightness(limit=.15), albu.RandomContrast(limit=.3), albu.RandomGamma()], p=.25),
+            albu.HorizontalFlip(p=.5),
+            albu.VerticalFlip(p=.5),
+            albu.Cutout(
+                num_holes=16,
+                max_h_size=16,
+                max_w_size=16,
+                fill_value=0,
+                always_apply=False,
+                p=0.7,
+            ),
+            albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.2, rotate_limit=40, p=0.7),
+        ]
+    )
 
     for fold in range(FOLDS):
         print('FOLD ',fold)

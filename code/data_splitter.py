@@ -7,7 +7,7 @@ from utils import set_seed
 
 
 SEED = 1
-FOLDS = 5
+FOLDS = 3
 set_seed(SEED)
 train_df = pd.read_csv('data/train_fold_v1.csv')
 labels = [str(i) for i in range(19)]
@@ -23,7 +23,7 @@ for fold,(idxT,idxV) in enumerate( skf.split(train_df,train_df[labels].values)):
 
 print(train_df.head())
 
-train_df = train_df.drop(['Unnamed: 0','Unnamed: 0.1'], axis = 1)
+train_df = train_df.drop(['Unnamed: 0','Unnamed: 0.1.1'], axis = 1)
 train_df = train_df.reset_index(drop = True)
 
-train_df.to_csv('data/train_fold_v1.csv')
+train_df.to_csv('data/train_fold_v2.csv')
