@@ -123,7 +123,7 @@ class HpaModel(nn.Module):
 
         base_model = torch.hub.load('pytorch/vision', base_model_name, pretrained=pretrained)
         #print(base_model)
-        #print('the list ',list(base_model.children()))
+        print('the list ',list(base_model.children()))
         layers = list(base_model.children())[:-1]
 
 
@@ -141,7 +141,7 @@ class HpaModel(nn.Module):
         c_in = F.relu(self.init_layer(c_in))
         #print('init layer c_in ',c_in.shape)
         spe = self.model(c_in)
-        #print('enc shape ',spe.shape)
+        print('enc shape ',spe.shape)
         spe = F.relu(self.fc1(F.dropout(spe.contiguous().view(batch_size, cells, -1), p=0.5, training=self.training))).permute(0,2,1)
         #print('spe shape ',spe.shape)
         final_output, norm_att, cell_pred = self.att_block(F.dropout(spe, p=0.5, training=self.training))
