@@ -7,6 +7,8 @@ import torch
 import torch.utils.data as data
 from sklearn.metrics import f1_score, roc_auc_score
 import time
+import torch.nn as nn
+import torch.nn.functional as F
 #from torchvision import transforms
 
 def set_seed(seed: int = 42):
@@ -159,6 +161,129 @@ def score_metrics(preds, labels):
     
 
     return {'AUROC':ROC_AUC_score,'F1_score':F1_score}
+
+class focal_loss(nn.Module):
+    def __init__(self, alpha=0.25, gamma=2, if_sigmoid = False, device = None):
+        super(focal_loss, self).__init__()
+        self.alpha = torch.Tensor([alpha, 1 - alpha])  # .cuda()
+        self.alpha = self.alpha.to(device)
+        self.gamma = gamma
+        self.if_sigmoid = if_sigmoid
+        #self.bce_loss = nn.BCELoss(reduction="none")
+
+    def forward(
+        self,
+        inputs,
+        targets,
+    ):
+        if self.if_sigmoid:
+            BCE_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction= 'none')
+        else:
+            BCE_loss = F.binary_cross_entropy(inputs, targets, reduction= 'none')
+        targets = targets.type(torch.long)
+        ## i guess this is going to give use some thing like [0.25,0.25,1-0.25]
+        ## for target of [0,0,1]. i guess gather will do this for us
+        at = self.alpha.gather(0, targets.data.view(-1))
+        ## here we apply the exp for the log values
+        ## this is very tricky. if you see this is for choosing p pr 1-p based on 0 or 1
+        ## its an inteligent way to do the choosing and araiving at the value fast
+        ## without this you have to do some hard engineering to get this value
+        #print('bce ',BCE_loss.shape)
+        
+        pt = torch.exp(-BCE_loss)
+        #print('rest ',(at * (1.0 - pt) ** self.gamma))
+
+        F_loss = (at * (1.0 - pt) ** self.gamma) * (BCE_loss)
+        return F_loss.mean()
+
+class PANNsLoss(nn.Module):
+    def __init__(self, device = None):
+        super().__init__()
+
+        self.bce = focal_loss(alpha=0.3, gamma=3, if_sigmoid = False , device = device)#nn.BCELoss(weight = torch.tensor(class_weights, requires_grad = False))
+
+    def forward(self, input, target):
+        input_ = input#["final_output"]
+        input_ = torch.where(torch.isnan(input_),
+                             torch.zeros_like(input_),
+                             input_)
+        input_ = torch.where(torch.isinf(input_),
+                             torch.zeros_like(input_),
+                             input_)
+
+        target = target.float()
+        #print(input_.shape)
+        return self.bce(input_.view(-1), target.view(-1))
+
+def lsep_loss_stable(input, target, average=True):
+
+    n = input.size(0)
+
+    differences = input.unsqueeze(1) - input.unsqueeze(2)
+    where_lower = (target.unsqueeze(1) < target.unsqueeze(2)).float()
+
+    differences = differences.view(n, -1)
+    where_lower = where_lower.view(n, -1)
+
+    max_difference, index = torch.max(differences, dim=1, keepdim=True)
+    differences = differences - max_difference
+    exps = differences.exp() * where_lower
+
+    lsep = max_difference + torch.log(torch.exp(-max_difference) + exps.sum(-1))
+
+    if average:
+        return lsep.mean()
+    else:
+        return lsep
+
+
+
+class ImprovedPANNsLoss(nn.Module):
+    def __init__(self, output_key="logit", weights=[1, 0.5]):
+        super().__init__()
+
+        self.output_key = output_key
+        if output_key == "logit":
+            self.normal_loss = nn.BCEWithLogitsLoss()
+        else:
+            self.normal_loss = nn.BCELoss()
+
+        self.bce = nn.BCELoss()
+        self.weights = weights
+
+    def forward(self, input, target):
+        input_ = input[self.output_key]
+        target = target.float()
+
+        framewise_output = input["framewise_output"]
+        clipwise_output_with_max, _ = framewise_output.max(dim=1)
+
+        normal_loss = self.normal_loss(input_, target)
+        auxiliary_loss = self.bce(clipwise_output_with_max, target)
+
+        return self.weights[0] * normal_loss + self.weights[1] * auxiliary_loss
+'''
+class ImprovedPANNsLoss(nn.Module):
+    def __init__(self, output_key="logit", weights=[1, 0.5]):
+        super().__init__()
+        self.output_key = output_key
+        if output_key == "logit":
+            self.normal_loss = focal_loss(alpha=0.3, gamma=3,if_sigmoid = True)#nn.BCEWithLogitsLoss()
+        else:
+            self.normal_loss = focal_loss(alpha=0.3, gamma=3,if_sigmoid = False)#nn.BCELoss()
+        self.bce = focal_loss(alpha=0.3, gamma=3,if_sigmoid = False)#nn.BCELoss()
+        self.weights = weights
+    def forward(self, input, target):
+        input_ = input[self.output_key]
+        target = target.float()
+        framewise_output = input["framewise_output"]
+        clipwise_output_with_max, _ = framewise_output.max(dim=1)
+        normal_loss = self.normal_loss(input_.view(-1), target.view(-1))
+        auxiliary_loss = self.bce(clipwise_output_with_max.view(-1), target.view(-1))
+        return self.weights[0] * normal_loss + self.weights[1] * auxiliary_loss
+'''
+
+
 
 
 

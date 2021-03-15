@@ -1,6 +1,6 @@
 
 import torch
-from utils import set_seed, score_metrics, hpa_dataset_v1
+from utils import set_seed, score_metrics, hpa_dataset_v1, PANNsLoss
 from model import HpaModel
 import pandas as pd
 import os
@@ -214,6 +214,8 @@ if __name__ == "__main__":
     #train_base_df = pd.read_csv('data/train_fold_v1.csv')
     if config['general']['loss'] == 'BCE':
         criterion = nn.BCELoss()
+    elif config['general']['loss'] == 'PANNsLoss':
+        criterion = PANNsLoss(device = device)
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}"):
         os.mkdir(f"weights/{WEIGHT_SAVE}")

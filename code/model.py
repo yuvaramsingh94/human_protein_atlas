@@ -29,6 +29,71 @@ class Autopool(nn.Module):
         final_out = torch.sum(torch.mul(sigmoid_output, weights), dim=1)
         return final_out, sigmoid_output
 
+def init_layer(layer):
+    nn.init.xavier_uniform_(layer.weight)
+
+    if hasattr(layer, "bias"):
+        if layer.bias is not None:
+            layer.bias.data.fill_(0.)
+
+
+def init_bn(bn):
+    bn.bias.data.fill_(0.)
+    bn.weight.data.fill_(1.0)
+
+class AttBlock(nn.Module):
+    def __init__(self,
+                 in_features: int,
+                 out_features: int,
+                 activation="linear",
+                 temperature=1.0):
+        super().__init__()
+
+        self.activation = activation
+        self.temperature = temperature
+        self.att = nn.Conv1d(
+            in_channels=in_features,
+            out_channels=out_features,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            bias=True)
+        self.cla = nn.Conv1d(
+            in_channels=in_features,
+            out_channels=out_features,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            bias=True)
+
+        self.bn_att = nn.BatchNorm1d(out_features)
+        self.init_weights()
+
+    def init_weights(self):
+        init_layer(self.att)
+        init_layer(self.cla)
+        init_bn(self.bn_att)
+
+    def forward(self, x):
+        # x: (n_samples, n_in, n_time)# tanh(self.att(x))
+        #norm_att = torch.softmax(torch.clamp(self.att(x), -10, 10), dim=-1)
+        norm_att = torch.softmax(torch.tanh(self.att(x)), dim=-1)
+        #print('norm_att ',norm_att.shape)
+        #print('normal ',norm_att)
+        #print('normal sum ',torch.sum(norm_att, dim =-1))
+        cla = self.nonlinear_transform(self.cla(x))
+        #print('cla ',cla.shape)
+        x = torch.sum(norm_att * cla, dim=2)
+        #print('sum ',x.shape)
+        x = torch.clamp(x, min=0.0, max = 1.0)
+        return x, norm_att, cla
+
+    def nonlinear_transform(self, x):
+        if self.activation == 'linear':
+            return x
+        elif self.activation == 'sigmoid':
+            return torch.sigmoid(x)
+
 class HpaSub(nn.Module):
     def __init__(self, classes, features):
         super(HpaSub, self).__init__()
@@ -66,8 +131,8 @@ class HpaModel(nn.Module):
 
 
         self.model = nn.Sequential(*layers)
-        self.fc = HpaSub(classes, features)
-        self.autopool = Autopool(input_size = classes, device = device)
+        self.fc1 = nn.Linear(features, features, bias=True)
+        self.att_block = AttBlock(features, classes, activation="sigmoid")
 
     def forward(self, x):
         batch_size, cells, C, H, W = x.size()
@@ -75,7 +140,10 @@ class HpaModel(nn.Module):
         #print('input c_in ',c_in.shape)
         c_in = F.relu(self.init_layer(c_in))
         #print('init layer c_in ',c_in.shape)
-        spe = self.fc(self.model(c_in))
-        spe = spe.contiguous().view(batch_size, cells, -1)
-        final_output, sigmoid_output = self.autopool(spe)
-        return {'final_output':final_output, 'sigmoid_output':sigmoid_output}
+        spe = self.model(c_in)
+        #print('enc shape ',spe.shape)
+        spe = F.relu(self.fc1(F.dropout(spe.contiguous().view(batch_size, cells, -1), p=0.5, training=self.training))).permute(0,2,1)
+        #print('spe shape ',spe.shape)
+        final_output, norm_att, cell_pred = self.att_block(F.dropout(spe, p=0.5, training=self.training))
+
+        return {'final_output':final_output, 'cell_pred':cell_pred}
