@@ -59,7 +59,7 @@ def encode_binary_mask(mask: np.ndarray) -> t.Text:
   # compress and base64 encoding --
   binary_str = zlib.compress(encoded_mask, zlib.Z_BEST_COMPRESSION)
   base64_str = base64.b64encode(binary_str)
-  return base64_str.decode('ascii')
+  return base64_str.decode()#('ascii')
 
 sub = pd.read_csv('data/sample_submission.csv')
 '''
@@ -135,6 +135,14 @@ def img_splitter(im_tok):
     image = np.concatenate([img_red, img_yellow, img_green, img_blue], axis=-1)
     img_mask = np.load(os.path.join('data/test_mask',f'{im_tok}.npz'))['arr_0'].astype(np.uint8)
 
+    #print('img shape ',image.shape)
+    #print('mask shape ',img_mask.shape)
+
+    if image.shape[:-1] != img_mask.shape:
+        print('they are not same ',im_tok)
+        print('img shape ',image.shape)
+        print('mask shape ',img_mask.shape)
+
     if not os.path.exists(f"data/test_h5_224_30000/{im_tok}"):
                 os.mkdir(f"data/test_h5_224_30000/{im_tok}")
     
@@ -143,7 +151,7 @@ def img_splitter(im_tok):
 
         token_list.append(im_tok)
         token_count.append(i)
-        token_enc.append(encode_binary_mask(bmask))
+        token_enc.append('' + encode_binary_mask(bmask))
 
         bmask = np.expand_dims(bmask, axis = -1)
         bmask = np.concatenate([bmask, bmask, bmask, bmask], axis=-1)
@@ -176,7 +184,7 @@ for i in tqdm(img_token_list):
     img_splitter(i)
 
 test_enc_df = pd.DataFrame.from_dict({'ID': token_list, 'count': token_count, 'encoding': token_enc})
-test_enc_df.to_csv('data/test_enc.csv',index=False)
+test_enc_df.to_csv('data/test_enc_v3.csv',index=False)
 '''
 BATCH_SIZE = 64
 WORKERS = 15
@@ -253,7 +261,7 @@ class hpa_dataset(data.Dataset):
             vv = h['test_img'][...]
         return { 'image':vv}
 
-test_enc_df = pd.read_csv('data/test_enc.csv')#[:10]
+test_enc_df = pd.read_csv('data/test_enc_v3.csv')#[:10]
 
 test_dataset = hpa_dataset(main_df = test_enc_df, path = 'data/test_h5_224_30000/')
 test_dataloader = data.DataLoader(
@@ -299,9 +307,10 @@ for tok in tokens_list:
         info = sub_d.iloc[i]
         encoding = info['encoding']
         class_pred = info[[str(j) for j in range(n_classes)]].values
-        for count, k in enumerate(class_pred):
+        for count, k in enumerate(class_pred[:1]):
             prediction_str += f'{count} {k} ' + encoding + ' '
-    
+    #here we might have to check if the string has len > 0 . maybe we might get '' also ......
+    prediction_str = prediction_str.strip()# hopefuly removes the final space
     token_list.append(tok)  
     prediction_string_list.append(prediction_str)
 
@@ -311,3 +320,4 @@ sub = pd.read_csv('data/sample_submission.csv')
 sub = sub.drop(['PredictionString'],axis=1)
 sub = sub.merge(sub_stage_2_df, on='ID')
 sub.to_csv(os.path.join(WORK_LOCATION,'submission.csv'), index=False)
+#'''
