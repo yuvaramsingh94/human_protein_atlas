@@ -59,7 +59,7 @@ def encode_binary_mask(mask: np.ndarray) -> t.Text:
   # compress and base64 encoding --
   binary_str = zlib.compress(encoded_mask, zlib.Z_BEST_COMPRESSION)
   base64_str = base64.b64encode(binary_str)
-  return base64_str.decode('ascii')
+  return base64_str.decode()#('ascii')
 
 sub = pd.read_csv('data/sample_submission.csv')
 '''
@@ -135,6 +135,14 @@ def img_splitter(im_tok):
     image = np.concatenate([img_red, img_yellow, img_green, img_blue], axis=-1)
     img_mask = np.load(os.path.join('data/test_mask',f'{im_tok}.npz'))['arr_0'].astype(np.uint8)
 
+    #print('img shape ',image.shape)
+    #print('mask shape ',img_mask.shape)
+
+    if image.shape[:-1] != img_mask.shape:
+        print('they are not same ',im_tok)
+        print('img shape ',image.shape)
+        print('mask shape ',img_mask.shape)
+
     if not os.path.exists(f"data/test_h5_224_30000/{im_tok}"):
                 os.mkdir(f"data/test_h5_224_30000/{im_tok}")
     
@@ -143,7 +151,7 @@ def img_splitter(im_tok):
 
         token_list.append(im_tok)
         token_count.append(i)
-        token_enc.append(encode_binary_mask(bmask))
+        token_enc.append('' + encode_binary_mask(bmask))
 
         bmask = np.expand_dims(bmask, axis = -1)
         bmask = np.concatenate([bmask, bmask, bmask, bmask], axis=-1)
@@ -176,16 +184,21 @@ for i in tqdm(img_token_list):
     img_splitter(i)
 
 test_enc_df = pd.DataFrame.from_dict({'ID': token_list, 'count': token_count, 'encoding': token_enc})
-test_enc_df.to_csv('data/test_enc.csv',index=False)
+test_enc_df.to_csv('data/test_enc_v3.csv',index=False)
 '''
 BATCH_SIZE = 64
 WORKERS = 15
 n_classes = 19
-WORK_LOCATION = 'data/submissions/test_v2/'
+WORK_LOCATION = 'data/submissions/test_v4/'
 device = torch.device("cuda:0")
-MODEL_PATH = 'weights/version_v2'
+MODEL_PATH = 'weights/version_v4'
 n_classes = 19
-# config_v1.ini
+# config_v1.ini\
+
+if not os.path.exists(WORK_LOCATION):
+        os.mkdir(WORK_LOCATION)
+
+
 model_fold_0 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'resnet34', features = 512, pretrained = False)
 
@@ -210,27 +223,28 @@ model_fold_2.eval()
 
 def model_prediction(X):
     #print(X.shape)
-    pred_0 = model_fold_0(X)['sigmoid_output']
-    pred_1 = model_fold_1(X)['sigmoid_output']
-    pred_2 = model_fold_2(X)['sigmoid_output']
+    #print('this is the shape ',model_fold_0(X)['cell_pred'].shape)
+    pred_0 = model_fold_0(X)['cell_pred']
+    pred_1 = model_fold_1(X)['cell_pred']
+    pred_2 = model_fold_2(X)['cell_pred']
     #torch.Size([1, 8, 4, 224, 224])
     X_up_down = torch.flip(X,[3])
     #print('X_up_down ',X_up_down.shape)
-    pred_3 = model_fold_0(X_up_down)['sigmoid_output']
-    pred_4 = model_fold_1(X_up_down)['sigmoid_output']
-    pred_5 = model_fold_2(X_up_down)['sigmoid_output']
+    pred_3 = model_fold_0(X_up_down)['cell_pred']
+    pred_4 = model_fold_1(X_up_down)['cell_pred']
+    pred_5 = model_fold_2(X_up_down)['cell_pred']
     #torch.Size([1, 8, 4, 224, 224])
     X_right_left = torch.flip(X,[4])
     #print('X_right_left ',X_right_left.shape)
-    pred_6 = model_fold_0(X_right_left)['sigmoid_output']
-    pred_7 = model_fold_1(X_right_left)['sigmoid_output']
-    pred_8 = model_fold_2(X_right_left)['sigmoid_output']
+    pred_6 = model_fold_0(X_right_left)['cell_pred']
+    pred_7 = model_fold_1(X_right_left)['cell_pred']
+    pred_8 = model_fold_2(X_right_left)['cell_pred']
     #torch.Size([1, 8, 4, 224, 224])
     X_right_left_up_down = torch.flip(X_right_left,[3])
     #print('X_right_left_up_down ',X_right_left_up_down.shape)
-    pred_9 = model_fold_0(X_right_left_up_down)['sigmoid_output']
-    pred_10 = model_fold_1(X_right_left_up_down)['sigmoid_output']
-    pred_11 = model_fold_2(X_right_left_up_down)['sigmoid_output']
+    pred_9 = model_fold_0(X_right_left_up_down)['cell_pred']
+    pred_10 = model_fold_1(X_right_left_up_down)['cell_pred']
+    pred_11 = model_fold_2(X_right_left_up_down)['cell_pred']
 
     pred = (pred_0 + pred_1 + pred_2 + pred_3 + pred_4 + pred_5 + pred_6 + pred_7 + pred_8 + pred_9 + pred_10 + pred_11)/12.
     #print('pred ',pred.shape)
@@ -253,7 +267,7 @@ class hpa_dataset(data.Dataset):
             vv = h['test_img'][...]
         return { 'image':vv}
 
-test_enc_df = pd.read_csv('data/test_enc.csv')#[:10]
+test_enc_df = pd.read_csv('data/test_enc_v3.csv')#[:10]
 
 test_dataset = hpa_dataset(main_df = test_enc_df, path = 'data/test_h5_224_30000/')
 test_dataloader = data.DataLoader(
@@ -273,9 +287,9 @@ with torch.no_grad():
         X = X.unsqueeze(0).permute(0,1,4,2,3)
         
         ## your model prediction goes here
-        pred = model_prediction(X)
+        pred = model_prediction(X) # this is pred shape  torch.Size([1, 19, 64]) # here the cell size is switched
         #print('this is pred shape ',pred.shape)# my guess(1, cell count , 19)
-        prediction_list.append(pred.detach().squeeze(0).cpu().numpy()) 
+        prediction_list.append(pred.detach().squeeze(0).permute(1,0).cpu().numpy()) #torch.Size([64, 19])
 predictions = np.concatenate(prediction_list, axis=0)
 #print('prediction shape ',predictions.shape)
 
@@ -301,8 +315,8 @@ for tok in tokens_list:
         class_pred = info[[str(j) for j in range(n_classes)]].values
         for count, k in enumerate(class_pred):
             prediction_str += f'{count} {k} ' + encoding + ' '
-    prediction_str = prediction_str[:-1]# hopefuly removes the final space
-    
+    #here we might have to check if the string has len > 0 . maybe we might get '' also ......
+    prediction_str = prediction_str.strip()# hopefuly removes the final space
     token_list.append(tok)  
     prediction_string_list.append(prediction_str)
 
@@ -312,3 +326,4 @@ sub = pd.read_csv('data/sample_submission.csv')
 sub = sub.drop(['PredictionString'],axis=1)
 sub = sub.merge(sub_stage_2_df, on='ID')
 sub.to_csv(os.path.join(WORK_LOCATION,'submission.csv'), index=False)
+#'''
