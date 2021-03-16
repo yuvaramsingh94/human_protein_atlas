@@ -307,7 +307,7 @@ for tok in tokens_list:
         info = sub_d.iloc[i]
         encoding = info['encoding']
         class_pred = info[[str(j) for j in range(n_classes)]].values
-        for count, k in enumerate(class_pred[:1]):
+        for count, k in enumerate(class_pred):
             prediction_str += f'{count} {k} ' + encoding + ' '
     #here we might have to check if the string has len > 0 . maybe we might get '' also ......
     prediction_str = prediction_str.strip()# hopefuly removes the final space
