@@ -46,6 +46,7 @@ def train(model,train_dataloader,optimizer,criterion):
         train_loss = criterion(prediction['final_output'], Y) 
         train_loss.backward()
         optimizer.step()
+        #print(model.init_layer.weight)
         train_loss_loop_list.append(train_loss.item())
 
     train_total_loss = np.array(train_loss_loop_list)
@@ -138,7 +139,7 @@ def run(fold):
     )
     model = HpaModel(classes = int(config['general']['classes']), device = device, 
                         base_model_name = config['general']['pretrained_model'], 
-                        features = int(config['general']['feature']), pretrained = True)
+                        features = int(config['general']['feature']), pretrained = True, init_linear_comb = bool(config['general']['init_linear_comb']))
     model = model.to(device)
     # Optimizer
     optimizer = optim.AdamW(model.parameters(), lr= LR)
@@ -210,6 +211,7 @@ if __name__ == "__main__":
     LR = float(config['general']['lr'])
     cells_used = int(config['general']['cells_used'])
     print('LR ',LR, type(LR))
+    print('init_linear_comb', bool(config['general']['init_linear_comb']), type(bool(config['general']['init_linear_comb'])))
     train_base_df = pd.read_csv(config['general']['data_csv'])
     #train_base_df = pd.read_csv('data/train_fold_v1.csv')
     if config['general']['loss'] == 'BCE':

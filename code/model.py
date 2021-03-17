@@ -69,6 +69,7 @@ class HpaModel(nn.Module):
             #lets set the weights to combine protein channel with other channel
             #[img_red, img_yellow, img_green, img_blue] # green is protein of interest
             # we will linearly combine green to all the other channel
+            #print('yessssssssss')
             custom_weight = torch.tensor([[[1,0,1,0]],[[0,1,1,0]],[[0,0,1,1]]], requires_grad=False).view(3,4,1,1).float()
             self.init_layer.weight = torch.nn.Parameter(custom_weight, requires_grad=False)
 
