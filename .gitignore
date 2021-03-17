@@ -6,3 +6,4 @@
 *.pyc
 *.pth
 log_dir/
+*.jpg
