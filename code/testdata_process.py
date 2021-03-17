@@ -189,9 +189,9 @@ test_enc_df.to_csv('data/test_enc_v3.csv',index=False)
 BATCH_SIZE = 64
 WORKERS = 15
 n_classes = 19
-WORK_LOCATION = 'data/submissions/test_v4/'
+WORK_LOCATION = 'data/submissions/test_v5/'
 device = torch.device("cuda:0")
-MODEL_PATH = 'weights/version_v4'
+MODEL_PATH = 'weights/version_v5'
 n_classes = 19
 # config_v1.ini\
 
@@ -202,21 +202,21 @@ if not os.path.exists(WORK_LOCATION):
 model_fold_0 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'resnet34', features = 512, pretrained = False)
 
-model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_2/model_AUC_{0}.pth",map_location = device))
+model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_2/model_F1_{0}.pth",map_location = device))
 model_fold_0.to(device)
 model_fold_0.eval()
 
 model_fold_1 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'resnet34', features = 512, pretrained = False)
 
-model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_2/model_AUC_{1}.pth",map_location = device))
+model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_1/model_F1_{1}.pth",map_location = device))
 model_fold_1.to(device)
 model_fold_1.eval()
 
 model_fold_2 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'resnet34', features = 512, pretrained = False)
 
-model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_1/model_AUC_{2}.pth",map_location = device))
+model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_2/model_F1_{2}.pth",map_location = device))
 model_fold_2.to(device)
 model_fold_2.eval()
 
