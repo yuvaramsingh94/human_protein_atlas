@@ -42,10 +42,16 @@ def train(model,train_dataloader,optimizer,criterion):
         X = X.permute(0,1,4,2,3)
         #print('Y shape ',Y)
         optimizer.zero_grad()
-        prediction = model(X)
-        train_loss = criterion(prediction['final_output'], Y) 
-        train_loss.backward()
-        optimizer.step()
+        with torch.cuda.amp.autocast():
+            prediction = model(X)
+            train_loss = criterion(prediction['final_output'], Y) 
+        
+        scaler.scale(train_loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
+
+        #train_loss.backward()
+        #optimizer.step()
         #print(model.init_layer.weight)
         train_loss_loop_list.append(train_loss.item())
 
@@ -70,9 +76,10 @@ def validation(model,valid_dataloader,criterion):
             X = X.to(device, dtype=torch.float)
             Y = Y.to(device, dtype=torch.float)
             X = X.permute(0,1,4,2,3)
-            prediction = model(X)
-
-            valid_loss = criterion(prediction['final_output'], Y)
+            with torch.cuda.amp.autocast():
+                prediction = model(X)
+                valid_loss = criterion(prediction['final_output'], Y)
+                
             valid_loss_loop_list.append(valid_loss.detach().cpu().item())
 
             scores = score_metrics(prediction['final_output'], Y)
@@ -215,7 +222,10 @@ if __name__ == "__main__":
     train_base_df = pd.read_csv(config['general']['data_csv'])
     #train_base_df = pd.read_csv('data/train_fold_v1.csv')
     if config['general']['loss'] == 'BCE':
-        criterion = nn.BCELoss().cuda()
+        #criterion = nn.BCELoss().cuda()
+        criterion = nn.BCEWithLogitsLoss().cuda()
+    if config['general']['loss'] == 'MSE':
+        criterion = torch.nn.MSELoss().cuda()
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}"):
         os.mkdir(f"weights/{WEIGHT_SAVE}")
@@ -236,6 +246,10 @@ if __name__ == "__main__":
             albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.2, rotate_limit=40, p=0.7),
         ]
     )
+
+
+    #for amp
+    scaler = torch.cuda.amp.GradScaler()
 
     for fold in range(FOLDS):
         print('FOLD ',fold)

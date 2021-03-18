@@ -27,6 +27,8 @@ class Autopool(nn.Module):
         softmax_den = softmax_den.unsqueeze(dim=1)
         weights = softmax_numerator / softmax_den
         final_out = torch.sum(torch.mul(sigmoid_output, weights), dim=1)
+        #final_out = torch.clamp(final_out, min=0.0, max = 1.0) # add if needed
+        #final_out = torch.log(final_out/(1 - final_out))
         return final_out, sigmoid_output
 
 class HpaSub(nn.Module):
@@ -63,7 +65,7 @@ class HpaModel(nn.Module):
         layers = list(base_model.children())[:-1]
 
 
-        self.init_layer = nn.Conv2d(in_channels=4, out_channels=3, kernel_size=1, stride=1,bias= False)
+        self.init_layer = nn.Conv2d(in_channels=4, out_channels=3, kernel_size=1, stride=1,bias= True)
 
         if self.init_linear_comb:
             #lets set the weights to combine protein channel with other channel

@@ -189,15 +189,19 @@ test_enc_df.to_csv('data/test_enc_v3.csv',index=False)
 BATCH_SIZE = 64
 WORKERS = 15
 n_classes = 19
-WORK_LOCATION = 'data/submissions/test_v2_1/'
-device = torch.device("cuda:2")
-MODEL_PATH = 'weights/version_v2_1'
+WORK_LOCATION = 'data/submissions/test_v2_4/'
+
+if not os.path.exists(WORK_LOCATION):
+        os.mkdir(WORK_LOCATION)
+
+device = torch.device("cuda:0")
+MODEL_PATH = 'weights/version_v2_4'
 n_classes = 19
 # config_v1.ini
 model_fold_0 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'resnet34', features = 512, pretrained = False, init_linear_comb = False)
 
-model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_2/model_AUC_{0}.pth",map_location = device))
+model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_1/model_AUC_{0}.pth",map_location = device))
 model_fold_0.to(device)
 model_fold_0.eval()
 
