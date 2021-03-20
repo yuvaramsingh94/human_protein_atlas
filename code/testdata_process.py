@@ -201,21 +201,21 @@ n_classes = 19
 model_fold_0 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'densenet121', features = 1024, pretrained = False, init_linear_comb = False)
 
-model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_2/model_F1_{0}.pth",map_location = device))
+model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_1/model_loss_{0}.pth",map_location = device))
 model_fold_0.to(device)
 model_fold_0.eval()
 
 model_fold_1 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'densenet121', features = 1024, pretrained = False, init_linear_comb = False)
 
-model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_1/model_F1_{1}.pth",map_location = device))
+model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_1/model_loss_{1}.pth",map_location = device))
 model_fold_1.to(device)
 model_fold_1.eval()
 
 model_fold_2 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'densenet121', features = 1024, pretrained = False, init_linear_comb = False)
 
-model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_1/model_F1_{2}.pth",map_location = device))
+model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_2/model_loss_{2}.pth",map_location = device))
 model_fold_2.to(device)
 model_fold_2.eval()
 

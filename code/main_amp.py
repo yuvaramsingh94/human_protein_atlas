@@ -42,9 +42,9 @@ def train(model,train_dataloader,optimizer,criterion):
         X = X.permute(0,1,4,2,3)
         #print('Y shape ',Y)
         optimizer.zero_grad()
-        #with torch.cuda.amp.autocast():
-        prediction = model(X)
-        train_loss = criterion(prediction['final_output'], Y) 
+        with torch.cuda.amp.autocast():
+            prediction = model(X)
+            train_loss = criterion(prediction['final_output'], Y) 
         
         scaler.scale(train_loss).backward()
         scaler.step(optimizer)
@@ -76,13 +76,13 @@ def validation(model,valid_dataloader,criterion):
             X = X.to(device, dtype=torch.float)
             Y = Y.to(device, dtype=torch.float)
             X = X.permute(0,1,4,2,3)
-            #with torch.cuda.amp.autocast():
-            prediction = model(X)
-            valid_loss = criterion(prediction['final_output'], Y)
+            with torch.cuda.amp.autocast():
+                prediction = model(X)
+                valid_loss = criterion(prediction['final_output'], Y)
                 
             valid_loss_loop_list.append(valid_loss.detach().cpu().item())
 
-            scores = score_metrics(prediction['final_output'], Y)
+            scores = score_metrics(torch.sigmoid(prediction['final_output']), Y)
 
             AUROC_loop_list.append(scores['AUROC']  )
             F1_loop_list.append(scores['F1_score']  )
@@ -106,11 +106,21 @@ def validation(model,valid_dataloader,criterion):
 def run(fold):
 
     train_df = train_base_df[train_base_df['fold'] != fold]
+
+    ## here we will upsample class 15 and 11 to see what it does to me 
+    print('This is training shape ',train_df.shape)
+    print('15 class ',train_df[train_df['15'] == 1].shape)
+    print('11 class ',train_df[train_df['11'] == 1].shape)
+    train_15 = train_df[train_df['15'] == 1].sample(n=500, replace=True, random_state=1)
+    train_11 = train_df[train_df['11'] == 1].sample(n=50, replace=True, random_state=1)
+    train_df = pd.concat([train_df,train_15,train_11])
+    print('This is resampled training shape ',train_df.shape)
+
     valid_df = train_base_df[train_base_df['fold'] == fold]
 
     print(f'Train df {train_df.shape} valid df {valid_df.shape}')
 
-    train_dataset = hpa_dataset_v1(main_df = train_df, path = DATA_PATH, augmentation = aug_fn, aug_per= 0.4, cells_used = cells_used)
+    train_dataset = hpa_dataset_v1(main_df = train_df, path = DATA_PATH, augmentation = aug_fn, aug_per= 0.8, cells_used = cells_used)
     valid_dataset = hpa_dataset_v1(main_df = valid_df, path = DATA_PATH, cells_used = cells_used, is_validation = True)
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}"):
@@ -146,7 +156,7 @@ def run(fold):
     )
     model = HpaModel(classes = int(config['general']['classes']), device = device, 
                         base_model_name = config['general']['pretrained_model'], 
-                        features = int(config['general']['feature']), pretrained = True, init_linear_comb = bool(config['general']['init_linear_comb']))
+                        features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
     model = model.to(device)
     # Optimizer
     optimizer = optim.AdamW(model.parameters(), lr= LR)
@@ -156,6 +166,7 @@ def run(fold):
 
     best_val_AUROC = 0.0
     best_val_F1_score = 0.0
+    best_val_loss = 10000.0
     for epoch in range (EPOCH):
         train_loss = train(model,train_dataloader,optimizer,criterion)
         val_loss,val_scores = validation(model,valid_dataloader,criterion)
@@ -185,13 +196,20 @@ def run(fold):
             
             torch.save( model.state_dict(),
                         f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_F1_{fold}.pth",)
+        
+        if val_loss < best_val_loss:
+            print(f"saving as we have {val_loss} val_loss which is improvement over {best_val_loss}")
+            best_val_loss = val_loss
+            
+            torch.save( model.state_dict(),
+                        f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_loss_{fold}.pth",)
 
     ### now we do the master check once . it should be slow so we do it once
     print("### Training ended ###")
     del model
     gc.collect()
 
-    writer.add_text('description',f'Here the  AUROC {best_val_AUROC} F1 {best_val_F1_score} ',EPOCH)
+    writer.add_text('description',f'Here the  AUROC {best_val_AUROC} F1 {best_val_F1_score} loss {best_val_loss}',EPOCH)
     writer.close()
     
     
@@ -218,12 +236,12 @@ if __name__ == "__main__":
     LR = float(config['general']['lr'])
     cells_used = int(config['general']['cells_used'])
     print('LR ',LR, type(LR))
-    print('init_linear_comb', bool(config['general']['init_linear_comb']), type(bool(config['general']['init_linear_comb'])))
+    print('init_linear_comb', config.getboolean('general','init_linear_comb'), type(config.getboolean('general','init_linear_comb')))
     train_base_df = pd.read_csv(config['general']['data_csv'])
     #train_base_df = pd.read_csv('data/train_fold_v1.csv')
     if config['general']['loss'] == 'BCE':
-        criterion = nn.BCELoss().cuda()
-        #criterion = nn.BCEWithLogitsLoss().cuda()
+        #criterion = nn.BCELoss().cuda()
+        criterion = nn.BCEWithLogitsLoss().cuda()
     if config['general']['loss'] == 'MSE':
         criterion = torch.nn.MSELoss().cuda()
 
@@ -236,12 +254,12 @@ if __name__ == "__main__":
             albu.HorizontalFlip(p=.5),
             albu.VerticalFlip(p=.5),
             albu.Cutout(
-                num_holes=16,
+                num_holes=12,
                 max_h_size=16,
                 max_w_size=16,
                 fill_value=0,
                 always_apply=False,
-                p=0.7,
+                p=0.5,
             ),
             albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.2, rotate_limit=40, p=0.7),
         ]

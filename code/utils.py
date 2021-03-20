@@ -7,6 +7,8 @@ import torch
 import torch.utils.data as data
 from sklearn.metrics import f1_score, roc_auc_score
 import time
+import torch.nn as nn
+import torch.nn.functional as F
 #from torchvision import transforms
 
 def set_seed(seed: int = 42):
@@ -80,6 +82,11 @@ class hpa_dataset_v1(data.Dataset):
                         vv = h['train_img'][...]
                         if random.random() < self.aug_percent:
                             vv = self.augmentation(image= vv)["image"]
+                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
+                        #print('this is rf ', rf)
+                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        vv = np.dstack([vv,rf_np])
+                        #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
                 train_img = np.array(cell_list)
                         
@@ -91,13 +98,18 @@ class hpa_dataset_v1(data.Dataset):
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
                         if random.random() < self.aug_percent:
-                            #print('augmentation')
+                            ##print('augmentation')
                             vv = self.augmentation(image= vv)["image"]
+                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
+                        #print('this is rf ', rf)
+                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        vv = np.dstack([vv,rf_np])
+                        #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
                 train_img = np.array(cell_list)
 
             elif cell_count < self.cells_used:# add zero images
-                #print('in the less class')
+                ##print('in the less class')
                 cell_list = []
                 for i in range(1, cell_count):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
@@ -105,12 +117,17 @@ class hpa_dataset_v1(data.Dataset):
                         vv = h['train_img'][...]
                         if random.random() < self.aug_percent:
                             vv = self.augmentation(image= vv)["image"]
+                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
+                        #print('this is rf ', rf)
+                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        vv = np.dstack([vv,rf_np])
+                        #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
                 train_img = np.array(cell_list)
-                shape = (self.cells_used - cell_count + 1, 224, 224, 4)
+                shape = (self.cells_used - cell_count + 1, 224, 224, 5)
                 zero_arr = np.zeros(shape, dtype=float)
-                #print('zero_arr ',zero_arr.shape)
-                #print('train_img ',train_img.shape)
+                ##print('zero_arr ',zero_arr.shape)
+                ##print('train_img ',train_img.shape)
                 train_img = np.concatenate([train_img, zero_arr], axis=0)
                 target_vec[-1] = 1# as we are adding black img . negative = 1 also
         else:
@@ -119,7 +136,13 @@ class hpa_dataset_v1(data.Dataset):
                 for i in range(1, self.cells_used + 1):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
-                        cell_list.append(h['train_img'][...])
+                        vv = h['train_img'][...]
+                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
+                        #print('this is rf ', rf)
+                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        vv = np.dstack([vv,rf_np])
+                        #print('this is vv shape ',vv.shape)
+                        cell_list.append(vv)
                 train_img = np.array(cell_list)
                         
             elif cell_count > self.cells_used:#random downsample
@@ -128,20 +151,32 @@ class hpa_dataset_v1(data.Dataset):
                 for i in range(1, self.cells_used + 1):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
-                        cell_list.append(h['train_img'][...])
+                        vv = h['train_img'][...]
+                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
+                        #print('this is rf ', rf)
+                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        vv = np.dstack([vv,rf_np])
+                        #print('this is vv shape ',vv.shape)
+                        cell_list.append(vv)
                 train_img = np.array(cell_list)
 
             elif cell_count < self.cells_used:# add zero images
-                #print('in the less class')
+                ##print('in the less class')
                 cell_list = []
                 for i in range(1, cell_count):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
-                        cell_list.append(h['train_img'][...])
+                        vv = h['train_img'][...]
+                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
+                        #print('this is rf ', rf)
+                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        vv = np.dstack([vv,rf_np])
+                        #print('this is vv shape ',vv.shape)
+                        cell_list.append(vv)
                 train_img = np.array(cell_list)
-                shape = (self.cells_used - cell_count + 1, 224, 224, 4)
+                shape = (self.cells_used - cell_count + 1, 224, 224, 5)
                 zero_arr = np.zeros(shape, dtype=float)
-                #print('zero_arr ',zero_arr.shape)
+                ##print('zero_arr ',zero_arr.shape)
                 #print('train_img ',train_img.shape)
                 train_img = np.concatenate([train_img, zero_arr], axis=0)
                 target_vec[-1] = 1# as we are adding black img . negative = 1 also
@@ -161,6 +196,39 @@ def score_metrics(preds, labels):
     return {'AUROC':ROC_AUC_score,'F1_score':F1_score}
 
 
+class focal_loss(nn.Module):
+    def __init__(self, alpha=0.25, gamma=2, if_sigmoid = False, device = None):
+        super(focal_loss, self).__init__()
+        self.alpha = torch.Tensor([alpha, 1 - alpha])  # .cuda()
+        self.alpha = self.alpha.to(device)
+        self.gamma = gamma
+        self.if_sigmoid = if_sigmoid
+        #self.bce_loss = nn.BCELoss(reduction="none")
+
+    def forward(
+        self,
+        inputs,
+        targets,
+    ):
+        if self.if_sigmoid:
+            BCE_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction= 'none')
+        else:
+            BCE_loss = F.binary_cross_entropy(inputs, targets, reduction= 'none')
+        targets = targets.type(torch.long)
+        ## i guess this is going to give use some thing like [0.25,0.25,1-0.25]
+        ## for target of [0,0,1]. i guess gather will do this for us
+        at = self.alpha.gather(0, targets.data.view(-1))
+        ## here we apply the exp for the log values
+        ## this is very tricky. if you see this is for choosing p pr 1-p based on 0 or 1
+        ## its an inteligent way to do the choosing and araiving at the value fast
+        ## without this you have to do some hard engineering to get this value
+        #print('bce ',BCE_loss.shape)
+        
+        pt = torch.exp(-BCE_loss)
+        #print('rest ',(at * (1.0 - pt) ** self.gamma))
+
+        F_loss = (at * (1.0 - pt) ** self.gamma) * (BCE_loss)
+        return F_loss.mean()
 
 
 
