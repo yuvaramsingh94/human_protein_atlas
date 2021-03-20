@@ -27,7 +27,7 @@ class Autopool(nn.Module):
         softmax_den = softmax_den.unsqueeze(dim=1)
         weights = softmax_numerator / softmax_den
         final_out = torch.sum(torch.mul(sigmoid_output, weights), dim=1)
-        #final_out = torch.clamp(final_out, min=0.0, max = 1.0) # add if needed
+        final_out = torch.clamp(final_out, min=0.0, max = 1.0) # add if needed
         #final_out = torch.log(final_out/(1 - final_out))
         return final_out, sigmoid_output
 
@@ -61,7 +61,7 @@ class HpaModel(nn.Module):
 
         base_model = torch.hub.load('pytorch/vision', base_model_name, pretrained=pretrained)
         #print(base_model)
-        #print('the list ',list(base_model.children()))
+        print('the list ',list(base_model.children()))
         layers = list(base_model.children())[:-1]
 
 
@@ -81,6 +81,26 @@ class HpaModel(nn.Module):
         self.autopool = Autopool(input_size = classes, device = device)
 
     def forward(self, x):
+        with torch.cuda.amp.autocast():
+            batch_size, cells, C, H, W = x.size()
+            c_in = self.transform(x.view(batch_size * cells, C, H, W))
+            #print('input c_in ',c_in.shape)
+            if self.init_linear_comb:
+                c_in = self.init_layer(c_in)
+            else:
+                c_in = F.relu(self.init_layer(c_in))
+
+            #thinking about adding a batchnorm layer here.........
+
+            #print('init layer c_in ',c_in.shape)
+            spe = self.model(c_in)
+        spe = self.fc(spe.float())
+        spe = spe.contiguous().view(batch_size, cells, -1)
+        final_output, sigmoid_output = self.autopool(spe)
+        return {'final_output':final_output, 'sigmoid_output':sigmoid_output}
+    
+    def test(self, x):
+        
         batch_size, cells, C, H, W = x.size()
         c_in = self.transform(x.view(batch_size * cells, C, H, W))
         #print('input c_in ',c_in.shape)

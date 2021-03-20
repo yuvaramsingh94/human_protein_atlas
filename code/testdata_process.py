@@ -189,63 +189,64 @@ test_enc_df.to_csv('data/test_enc_v3.csv',index=False)
 BATCH_SIZE = 64
 WORKERS = 15
 n_classes = 19
-WORK_LOCATION = 'data/submissions/test_v2_4/'
+WORK_LOCATION = 'data/submissions/test_v2_3/'
 
 if not os.path.exists(WORK_LOCATION):
         os.mkdir(WORK_LOCATION)
 
-device = torch.device("cuda:0")
-MODEL_PATH = 'weights/version_v2_4'
+device = torch.device("cuda:1")
+MODEL_PATH = 'weights/version_v2_3'
 n_classes = 19
 # config_v1.ini
 model_fold_0 = HpaModel(classes = n_classes, device = device, 
-                        base_model_name = 'resnet34', features = 512, pretrained = False, init_linear_comb = False)
+                        base_model_name = 'densenet121', features = 1024, pretrained = False, init_linear_comb = False)
 
-model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_1/model_AUC_{0}.pth",map_location = device))
+model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_2/model_F1_{0}.pth",map_location = device))
 model_fold_0.to(device)
 model_fold_0.eval()
 
 model_fold_1 = HpaModel(classes = n_classes, device = device, 
-                        base_model_name = 'resnet34', features = 512, pretrained = False,init_linear_comb = False)
+                        base_model_name = 'densenet121', features = 1024, pretrained = False, init_linear_comb = False)
 
-model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_1/model_AUC_{1}.pth",map_location = device))
+model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_1/model_F1_{1}.pth",map_location = device))
 model_fold_1.to(device)
 model_fold_1.eval()
 
 model_fold_2 = HpaModel(classes = n_classes, device = device, 
-                        base_model_name = 'resnet34', features = 512, pretrained = False,init_linear_comb = False)
+                        base_model_name = 'densenet121', features = 1024, pretrained = False, init_linear_comb = False)
 
-model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_1/model_AUC_{2}.pth",map_location = device))
+model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_1/model_F1_{2}.pth",map_location = device))
 model_fold_2.to(device)
 model_fold_2.eval()
 
 
 def model_prediction(X):
     #print(X.shape)
-    pred_0 = model_fold_0(X)['sigmoid_output']
-    pred_1 = model_fold_1(X)['sigmoid_output']
-    pred_2 = model_fold_2(X)['sigmoid_output']
+    pred_0 = model_fold_0.test(X)['sigmoid_output']
+    pred_1 = model_fold_1.test(X)['sigmoid_output']
+    pred_2 = model_fold_2.test(X)['sigmoid_output']
     #torch.Size([1, 8, 4, 224, 224])
     X_up_down = torch.flip(X,[3])
     #print('X_up_down ',X_up_down.shape)
-    pred_3 = model_fold_0(X_up_down)['sigmoid_output']
-    pred_4 = model_fold_1(X_up_down)['sigmoid_output']
-    pred_5 = model_fold_2(X_up_down)['sigmoid_output']
+    pred_3 = model_fold_0.test(X_up_down)['sigmoid_output']
+    pred_4 = model_fold_1.test(X_up_down)['sigmoid_output']
+    pred_5 = model_fold_2.test(X_up_down)['sigmoid_output']
     #torch.Size([1, 8, 4, 224, 224])
     X_right_left = torch.flip(X,[4])
     #print('X_right_left ',X_right_left.shape)
-    pred_6 = model_fold_0(X_right_left)['sigmoid_output']
-    pred_7 = model_fold_1(X_right_left)['sigmoid_output']
-    pred_8 = model_fold_2(X_right_left)['sigmoid_output']
+    pred_6 = model_fold_0.test(X_right_left)['sigmoid_output']
+    pred_7 = model_fold_1.test(X_right_left)['sigmoid_output']
+    pred_8 = model_fold_2.test(X_right_left)['sigmoid_output']
     #torch.Size([1, 8, 4, 224, 224])
     X_right_left_up_down = torch.flip(X_right_left,[3])
     #print('X_right_left_up_down ',X_right_left_up_down.shape)
-    pred_9 = model_fold_0(X_right_left_up_down)['sigmoid_output']
-    pred_10 = model_fold_1(X_right_left_up_down)['sigmoid_output']
-    pred_11 = model_fold_2(X_right_left_up_down)['sigmoid_output']
+    pred_9 = model_fold_0.test(X_right_left_up_down)['sigmoid_output']
+    pred_10 = model_fold_1.test(X_right_left_up_down)['sigmoid_output']
+    pred_11 = model_fold_2.test(X_right_left_up_down)['sigmoid_output']
 
     pred = (pred_0 + pred_1 + pred_2 + pred_3 + pred_4 + pred_5 + pred_6 + pred_7 + pred_8 + pred_9 + pred_10 + pred_11)/12.
     #print('pred ',pred.shape)
+    #pred = torch.clamp(pred * 1.5, min=0.0, max = 1.0)
     return pred
 
 class hpa_dataset(data.Dataset):
@@ -299,7 +300,7 @@ for i in range(n_classes):
 
 test_enc_df[[str(i) for i in range(n_classes)]] = predictions
 
-test_enc_df.to_csv('data/submissions/test_v2/stage_1.csv',index=False)
+test_enc_df.to_csv(os.path.join(WORK_LOCATION,'stage_1.csv'),index=False)
 tokens_list = test_enc_df.ID.unique()
 
 prediction_string_list = []

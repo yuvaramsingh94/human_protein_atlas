@@ -42,9 +42,9 @@ def train(model,train_dataloader,optimizer,criterion):
         X = X.permute(0,1,4,2,3)
         #print('Y shape ',Y)
         optimizer.zero_grad()
-        with torch.cuda.amp.autocast():
-            prediction = model(X)
-            train_loss = criterion(prediction['final_output'], Y) 
+        #with torch.cuda.amp.autocast():
+        prediction = model(X)
+        train_loss = criterion(prediction['final_output'], Y) 
         
         scaler.scale(train_loss).backward()
         scaler.step(optimizer)
@@ -76,9 +76,9 @@ def validation(model,valid_dataloader,criterion):
             X = X.to(device, dtype=torch.float)
             Y = Y.to(device, dtype=torch.float)
             X = X.permute(0,1,4,2,3)
-            with torch.cuda.amp.autocast():
-                prediction = model(X)
-                valid_loss = criterion(prediction['final_output'], Y)
+            #with torch.cuda.amp.autocast():
+            prediction = model(X)
+            valid_loss = criterion(prediction['final_output'], Y)
                 
             valid_loss_loop_list.append(valid_loss.detach().cpu().item())
 
@@ -138,7 +138,7 @@ def run(fold):
     valid_dataloader = data.DataLoader(
         valid_dataset,
         batch_size=BATCH_SIZE,
-        shuffle=True,
+        shuffle=False,
         num_workers=WORKERS,
         drop_last=False,
         pin_memory=True,
@@ -222,8 +222,8 @@ if __name__ == "__main__":
     train_base_df = pd.read_csv(config['general']['data_csv'])
     #train_base_df = pd.read_csv('data/train_fold_v1.csv')
     if config['general']['loss'] == 'BCE':
-        #criterion = nn.BCELoss().cuda()
-        criterion = nn.BCEWithLogitsLoss().cuda()
+        criterion = nn.BCELoss().cuda()
+        #criterion = nn.BCEWithLogitsLoss().cuda()
     if config['general']['loss'] == 'MSE':
         criterion = torch.nn.MSELoss().cuda()
 
