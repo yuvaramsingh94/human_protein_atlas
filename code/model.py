@@ -87,7 +87,7 @@ class HpaModel(nn.Module):
         c_in = self.transform(x.view(batch_size * cells, C, H, W))
         #print('input c_in ',c_in[0,4,:,:])
         if self.init_linear_comb:
-            #print('init')
+            print('init')
             c_in = self.init_layer(c_in)
         else:
             #print('aama')

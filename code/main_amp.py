@@ -1,6 +1,6 @@
 
 import torch
-from utils import set_seed, score_metrics, hpa_dataset_v1
+from utils import set_seed, score_metrics, hpa_dataset_v1, focal_loss
 from model import HpaModel
 import pandas as pd
 import os
@@ -40,7 +40,7 @@ def train(model,train_dataloader,optimizer,criterion):
         X = X.to(device, dtype=torch.float)
         Y = Y.to(device, dtype=torch.float)
         X = X.permute(0,1,4,2,3)
-        #print('Y shape ',Y)
+        #print(X.shape)
         optimizer.zero_grad()
         with torch.cuda.amp.autocast():
             prediction = model(X)
@@ -76,6 +76,7 @@ def validation(model,valid_dataloader,criterion):
             X = X.to(device, dtype=torch.float)
             Y = Y.to(device, dtype=torch.float)
             X = X.permute(0,1,4,2,3)
+            
             with torch.cuda.amp.autocast():
                 prediction = model(X)
                 valid_loss = criterion(prediction['final_output'], Y)
@@ -102,6 +103,42 @@ def validation(model,valid_dataloader,criterion):
     print(f" \n valid loss : {valid_total_loss}")
     return valid_total_loss, {'AUROC':AUROC_loop_list,'F1_score':F1_loop_list}
 
+def val_oof(fold, metrics):
+    model = HpaModel(classes = int(config['general']['classes']), device = device, 
+                        base_model_name = config['general']['pretrained_model'], 
+                        features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
+    model.load_state_dict(torch.load(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_{metrics}_{fold}.pth",map_location = device))
+    model.to(device)
+    model.eval()                        
+
+    valid_df = train_base_df[train_base_df['fold'] == fold]
+    valid_dataset = hpa_dataset_v1(main_df = valid_df, path = DATA_PATH, 
+                                    cells_used = cells_used, is_validation = True)
+    valid_dataloader = data.DataLoader(
+        valid_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=False,
+        num_workers=WORKERS,
+        drop_last=False,
+        pin_memory=True,
+        
+    )
+    prediction_list = []
+    with torch.no_grad():
+        for data_t in tqdm(valid_dataloader):
+
+            X, Y = data_t['image'],data_t['label']
+
+            X = X.to(device, dtype=torch.float)
+            Y = Y.to(device, dtype=torch.float)
+            X = X.permute(0,1,4,2,3)
+            with torch.cuda.amp.autocast():
+                prediction = torch.sigmoid(model(X)['final_output'])#model(X)
+            prediction_list.append(prediction.detach().cpu().numpy()) 
+    predictions = np.concatenate(prediction_list, axis=0)
+    
+    valid_df[[str(f'pred_{i}') for i in range(int(config['general']['classes']))]] = predictions
+    return valid_df
 
 def run(fold):
 
@@ -109,12 +146,15 @@ def run(fold):
 
     ## here we will upsample class 15 and 11 to see what it does to me 
     print('This is training shape ',train_df.shape)
-    print('15 class ',train_df[train_df['15'] == 1].shape)
-    print('11 class ',train_df[train_df['11'] == 1].shape)
-    train_15 = train_df[train_df['15'] == 1].sample(n=500, replace=True, random_state=1)
-    train_11 = train_df[train_df['11'] == 1].sample(n=50, replace=True, random_state=1)
-    train_df = pd.concat([train_df,train_15,train_11])
-    print('This is resampled training shape ',train_df.shape)
+    if config.getboolean('general','is_resample'):
+        print('15 class ',train_df[train_df['15'] == 1].shape)
+        print('11 class ',train_df[train_df['11'] == 1].shape)
+        train_15 = train_df[train_df['15'] == 1].sample(n=500, replace=True, random_state=1)
+        train_11 = train_df[train_df['11'] == 1].sample(n=50, replace=True, random_state=1)
+        train_df = pd.concat([train_df,train_15,train_11])
+        print('This is resampled training shape ',train_df.shape)
+    else:
+        print("NO RESAMPLING")
 
     valid_df = train_base_df[train_base_df['fold'] == fold]
 
@@ -244,6 +284,10 @@ if __name__ == "__main__":
         criterion = nn.BCEWithLogitsLoss().cuda()
     if config['general']['loss'] == 'MSE':
         criterion = torch.nn.MSELoss().cuda()
+    if config['general']['loss'] == 'focal':
+        print('Using Focal loss')
+        criterion = focal_loss(alpha=0.25, gamma=2, if_sigmoid = True, device = device).cuda()
+
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}"):
         os.mkdir(f"weights/{WEIGHT_SAVE}")
@@ -275,3 +319,13 @@ if __name__ == "__main__":
         print('This is the sec rand no ',random.randint(2,50))
         print('This is the 3 rand no ',random.randint(2,50))
         run(fold)
+
+    oof_list = []
+    for fold in range(FOLDS):
+        val_o_df = val_oof(fold, metrics = 'AUC')
+        
+        oof_list.append(val_o_df)
+    
+    ## now we cancatenate the prediction datafram and save it in one 
+    oof_df = pd.concat(oof_list)
+    oof_df.to_csv(f"weights/{WEIGHT_SAVE}/oof_seed_{SEED}.csv", index = False)

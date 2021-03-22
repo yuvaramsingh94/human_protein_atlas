@@ -224,10 +224,10 @@ class focal_loss(nn.Module):
         ## without this you have to do some hard engineering to get this value
         #print('bce ',BCE_loss.shape)
         
-        pt = torch.exp(-BCE_loss)
-        #print('rest ',(at * (1.0 - pt) ** self.gamma))
+        pt = torch.exp(-BCE_loss.view(-1))
+        #print('rest ',(at * (1.0 - pt) ** self.gamma).shape)
 
-        F_loss = (at * (1.0 - pt) ** self.gamma) * (BCE_loss)
+        F_loss = (at * (1.0 - pt) ** self.gamma) * (BCE_loss.view(-1))
         return F_loss.mean()
 
 

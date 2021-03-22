@@ -161,24 +161,27 @@ def img_splitter(im_tok):
         top_left = true_points.min(axis=0)
         bottom_right = true_points.max(axis=0)
         cropped_arr = masked_img[top_left[0]:bottom_right[0]+1,top_left[1]:bottom_right[1]+1]
-        #print(cropped_arr.shape)
-        #print('Area: ',cropped_arr.shape[0] * cropped_arr.shape[1])
-        #if cropped_arr.shape[0] * cropped_arr.shape[1] > 30000:
+        non_zero_count = np.count_nonzero(cropped_arr[:,:,2])
+        relative_freq = np.array(non_zero_count/(cropped_arr.shape[0] * cropped_arr.shape[1]))
+        #print(relative_freq)
         cropped_arr = resize(cropped_arr, (224, 224))
-
-        
 
         hdf5_path = os.path.join(f'data/test_h5_224_30000/{im_tok}',f'{im_tok}_{i}.hdf5')
         hdf5_file = h5py.File(hdf5_path, mode='w')
         hdf5_file.create_dataset("test_img",cropped_arr.shape,np.float)
+        hdf5_file.create_dataset("protein_rf",relative_freq.shape,np.float)
         hdf5_file["test_img"][...] = cropped_arr
+        hdf5_file["protein_rf"][...] = relative_freq
         hdf5_file.close()
 
-img_token_list = sub['ID'].values
+img_token_list = sub['ID'].values#[:5]
 
 token_list = []
 token_count = []
 token_enc = []
+
+if not os.path.exists(f"data/test_h5_224_30000"):
+                os.mkdir(f"data/test_h5_224_30000")
 
 for i in tqdm(img_token_list):
     img_splitter(i)
@@ -189,60 +192,65 @@ test_enc_df.to_csv('data/test_enc_v3.csv',index=False)
 BATCH_SIZE = 64
 WORKERS = 15
 n_classes = 19
-WORK_LOCATION = 'data/submissions/test_v2_3/'
+metric_use = 'loss'
+vees = 'v2_3_3'
+WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
+
+
+
 
 if not os.path.exists(WORK_LOCATION):
         os.mkdir(WORK_LOCATION)
 
-device = torch.device("cuda:1")
-MODEL_PATH = 'weights/version_v2_3'
+device = torch.device("cuda:2")
+MODEL_PATH = f'weights/version_{vees}'
 n_classes = 19
 # config_v1.ini
 model_fold_0 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'densenet121', features = 1024, pretrained = False, init_linear_comb = False)
 
-model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_1/model_loss_{0}.pth",map_location = device))
+model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_1/model_{metric_use}_{0}.pth",map_location = device))
 model_fold_0.to(device)
 model_fold_0.eval()
 
 model_fold_1 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'densenet121', features = 1024, pretrained = False, init_linear_comb = False)
 
-model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_1/model_loss_{1}.pth",map_location = device))
+model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_1/model_{metric_use}_{1}.pth",map_location = device))
 model_fold_1.to(device)
 model_fold_1.eval()
 
 model_fold_2 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'densenet121', features = 1024, pretrained = False, init_linear_comb = False)
 
-model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_2/model_loss_{2}.pth",map_location = device))
+model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_1/model_{metric_use}_{2}.pth",map_location = device))
 model_fold_2.to(device)
 model_fold_2.eval()
 
 
 def model_prediction(X):
     #print(X.shape)
-    pred_0 = model_fold_0.test(X)['sigmoid_output']
-    pred_1 = model_fold_1.test(X)['sigmoid_output']
-    pred_2 = model_fold_2.test(X)['sigmoid_output']
-    #torch.Size([1, 8, 4, 224, 224])
+    pred_0 = model_fold_0(X)['sigmoid_output']
+    pred_1 = model_fold_1(X)['sigmoid_output']
+    pred_2 = model_fold_2(X)['sigmoid_output']
+    #torch.Size([1, 8, 5, 224, 224])
     X_up_down = torch.flip(X,[3])
     #print('X_up_down ',X_up_down.shape)
-    pred_3 = model_fold_0.test(X_up_down)['sigmoid_output']
-    pred_4 = model_fold_1.test(X_up_down)['sigmoid_output']
-    pred_5 = model_fold_2.test(X_up_down)['sigmoid_output']
-    #torch.Size([1, 8, 4, 224, 224])
+    pred_3 = model_fold_0(X_up_down)['sigmoid_output']
+    pred_4 = model_fold_1(X_up_down)['sigmoid_output']
+    pred_5 = model_fold_2(X_up_down)['sigmoid_output']
+    #torch.Size([1, 8, 5, 224, 224])
     X_right_left = torch.flip(X,[4])
     #print('X_right_left ',X_right_left.shape)
-    pred_6 = model_fold_0.test(X_right_left)['sigmoid_output']
-    pred_7 = model_fold_1.test(X_right_left)['sigmoid_output']
-    pred_8 = model_fold_2.test(X_right_left)['sigmoid_output']
-    #torch.Size([1, 8, 4, 224, 224])
+    pred_6 = model_fold_0(X_right_left)['sigmoid_output']
+    pred_7 = model_fold_1(X_right_left)['sigmoid_output']
+    pred_8 = model_fold_2(X_right_left)['sigmoid_output']
+    #torch.Size([1, 8, 5, 224, 224])
     X_right_left_up_down = torch.flip(X_right_left,[3])
     #print('X_right_left_up_down ',X_right_left_up_down.shape)
-    pred_9 = model_fold_0.test(X_right_left_up_down)['sigmoid_output']
-    pred_10 = model_fold_1.test(X_right_left_up_down)['sigmoid_output']
-    pred_11 = model_fold_2.test(X_right_left_up_down)['sigmoid_output']
+    pred_9 = model_fold_0(X_right_left_up_down)['sigmoid_output']
+    pred_10 = model_fold_1(X_right_left_up_down)['sigmoid_output']
+    pred_11 = model_fold_2(X_right_left_up_down)['sigmoid_output']
 
     pred = (pred_0 + pred_1 + pred_2 + pred_3 + pred_4 + pred_5 + pred_6 + pred_7 + pred_8 + pred_9 + pred_10 + pred_11)/12.
     #print('pred ',pred.shape)
@@ -264,6 +272,10 @@ class hpa_dataset(data.Dataset):
         hdf5_path = os.path.join(self.path,ids,f'{ids}_{count}.hdf5')
         with h5py.File(hdf5_path,"r") as h:
             vv = h['test_img'][...]
+            rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
+            #print('this is rf ', rf)
+            rf_np = np.full(shape = (224,224), fill_value = rf)
+            vv = np.dstack([vv,rf_np])
         return { 'image':vv}
 
 test_enc_df = pd.read_csv('data/test_enc_v3.csv')#[:10]
