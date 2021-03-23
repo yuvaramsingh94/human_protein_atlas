@@ -193,7 +193,7 @@ BATCH_SIZE = 64
 WORKERS = 15
 n_classes = 19
 metric_use = 'loss'
-vees = 'v2_3_3'
+vees = 'v2_3_5'
 WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
 
 
