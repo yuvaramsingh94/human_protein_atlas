@@ -1,7 +1,7 @@
 
 import torch
 from utils import set_seed, score_metrics, hpa_dataset_v1, focal_loss
-from model import HpaModel
+from model import HpaModel, HpaModel_1, HpaModel_2
 import pandas as pd
 import os
 import numpy as np
@@ -104,9 +104,27 @@ def validation(model,valid_dataloader,criterion):
     return valid_total_loss, {'AUROC':AUROC_loop_list,'F1_score':F1_loop_list}
 
 def val_oof(fold, metrics):
-    model = HpaModel(classes = int(config['general']['classes']), device = device, 
-                        base_model_name = config['general']['pretrained_model'], 
-                        features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
+    
+    if config['general']['model'] == 'HpaModel_1':
+        print('using ',config['general']['model'])
+        model = HpaModel_1(classes = int(config['general']['classes']), device = device, 
+                            base_model_name = config['general']['pretrained_model'], 
+                            features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
+        model = model.to(device)
+    elif config['general']['model'] == 'HpaModel':
+        print('using ',config['general']['model'])
+        model = HpaModel(classes = int(config['general']['classes']), device = device, 
+                            base_model_name = config['general']['pretrained_model'], 
+                            features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
+        model = model.to(device)
+    elif config['general']['model'] == 'HpaModel_2':
+        print('using ',config['general']['model'])
+        model = HpaModel_2(classes = int(config['general']['classes']), device = device, 
+                            base_model_name = config['general']['pretrained_model'], 
+                            features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
+    
+    
+    
     model.load_state_dict(torch.load(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_{metrics}_{fold}.pth",map_location = device))
     model.to(device)
     model.eval()                        
@@ -194,10 +212,25 @@ def run(fold):
         pin_memory=True,
         
     )
-    model = HpaModel(classes = int(config['general']['classes']), device = device, 
-                        base_model_name = config['general']['pretrained_model'], 
-                        features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
-    model = model.to(device)
+
+    if config['general']['model'] == 'HpaModel_1':
+        print('using ',config['general']['model'])
+        model = HpaModel_1(classes = int(config['general']['classes']), device = device, 
+                            base_model_name = config['general']['pretrained_model'], 
+                            features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
+        model = model.to(device)
+    elif config['general']['model'] == 'HpaModel':
+        print('using ',config['general']['model'])
+        model = HpaModel(classes = int(config['general']['classes']), device = device, 
+                            base_model_name = config['general']['pretrained_model'], 
+                            features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
+        model = model.to(device)
+    elif config['general']['model'] == 'HpaModel_2':
+        print('using ',config['general']['model'])
+        model = HpaModel_2(classes = int(config['general']['classes']), device = device, 
+                            base_model_name = config['general']['pretrained_model'], 
+                            features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
+        model = model.to(device)
     # Optimizer
     optimizer = optim.AdamW(model.parameters(), lr= LR)
 
@@ -305,7 +338,7 @@ if __name__ == "__main__":
                 always_apply=False,
                 p=0.5,
             ),
-            albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.2, rotate_limit=40, p=0.7),
+            albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, p=0.7),
         ]
     )
 

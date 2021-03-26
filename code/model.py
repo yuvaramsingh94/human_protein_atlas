@@ -149,7 +149,7 @@ class HpaModel(nn.Module):
 
 class HpaModel_1(nn.Module):
     def __init__(self, classes, device, base_model_name, pretrained, features, init_linear_comb = False):
-        super(HpaModel, self).__init__()
+        super(HpaModel_1, self).__init__()
 
         mean_list = [0.083170892049318, 0.08627143702844145, 0.05734662013795027, 0.06582942296076659, 0.0]
         std_list = [0.13561066140407024, 0.13301454127989584, 0.09142918497144226, 0.15651865713966945, 1.]
@@ -218,3 +218,62 @@ class HpaModel_1(nn.Module):
         spe = spe.contiguous().view(batch_size, cells, -1)
         final_output, sigmoid_output = self.autopool(spe)
         return {'final_output':final_output, 'sigmoid_output':sigmoid_output}
+
+
+class HpaModel_2(nn.Module):
+    def __init__(self, classes, device, base_model_name, pretrained, features, init_linear_comb = False):
+        super(HpaModel_2, self).__init__()
+
+        mean_list = [0.083170892049318, 0.08627143702844145, 0.05734662013795027, 0.06582942296076659, 0.0]
+        std_list = [0.13561066140407024, 0.13301454127989584, 0.09142918497144226, 0.15651865713966945, 1.]
+        self.transform=transforms.Compose([Normalize(mean= mean_list,
+                              std= std_list,
+                              device = device)])
+        self.init_linear_comb = init_linear_comb
+
+        base_model = torch.hub.load('pytorch/vision', base_model_name, pretrained=pretrained)
+        #print(base_model)
+        #print('the list ',list(base_model.children()))
+        layers = list(base_model.children())[:-1]
+
+
+        self.init_layer = nn.Conv2d(in_channels=5, out_channels=3, kernel_size=1, stride=1,bias= True)
+
+        if self.init_linear_comb:
+            #lets set the weights to combine protein channel with other channel
+            #[img_red, img_yellow, img_green, img_blue] # green is protein of interest
+            # we will linearly combine green to all the other channel
+            print('yessssssssss')
+            self.init_layer = nn.Conv2d(in_channels=4, out_channels=3, kernel_size=1, stride=1,bias= False)
+            custom_weight = torch.tensor([[[1,0,1,0]],[[0,1,1,0]],[[0,0,1,1]]], requires_grad=False).view(3,4,1,1).float()
+            self.init_layer.weight = torch.nn.Parameter(custom_weight, requires_grad=False)
+
+
+        self.model = nn.Sequential(*layers)
+        self.fc = HpaSub(classes, features)
+        self.sigmoid_layer = nn.Sigmoid()
+
+    def forward(self, x):
+        #with torch.cuda.amp.autocast():
+        batch_size, cells, C, H, W = x.size()
+        c_in = self.transform(x.view(batch_size * cells, C, H, W))
+        #print('input c_in ',c_in[0,4,:,:])
+        if self.init_linear_comb:
+            print('init')
+            c_in = self.init_layer(c_in)
+        else:
+            #print('aama')
+            c_in = F.relu(self.init_layer(c_in))
+
+        #thinking about adding a batchnorm layer here.........
+
+        #print('init layer c_in ',c_in.shape)
+        spe = self.model(c_in)
+        spe = self.fc(spe)
+        spe = spe.contiguous().view(batch_size, cells, -1)
+        sigmoid_output = self.sigmoid_layer(spe)
+        final_output = torch.mean(spe, dim = 1)#cells
+
+        return {'final_output':final_output, 'sigmoid_output':sigmoid_output}
+    
+    
