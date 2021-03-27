@@ -70,8 +70,8 @@ class HpaSub(nn.Module):
 
     def forward(self, GAP):
         #print('GAP ',GAP.shape)
-        GAP = F.avg_pool2d(GAP, GAP.size()[2:]).squeeze()
-        #rint('GAP ',GAP.shape)
+        #GAP = F.avg_pool2d(GAP, GAP.size()[2:]).squeeze()
+        #print('GAP ',GAP.shape)
         spe = self.species(GAP)
         return spe
 
@@ -86,7 +86,7 @@ class HpaModel(nn.Module):
                               device = device)])
         self.init_linear_comb = init_linear_comb
 
-        base_model = torch.hub.load('pytorch/vision', base_model_name, pretrained=pretrained)
+        base_model = torch.hub.load('zhanghang1989/ResNeSt', base_model_name, pretrained=pretrained)
         #print(base_model)
         #print('the list ',list(base_model.children()))
         layers = list(base_model.children())[:-1]
