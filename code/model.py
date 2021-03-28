@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 from utils import Normalize
+from efficientnet_pytorch import EfficientNet
 
 class Autopool(nn.Module):
     def __init__(
@@ -70,7 +71,7 @@ class HpaSub(nn.Module):
 
     def forward(self, GAP):
         #print('GAP ',GAP.shape)
-        #GAP = F.avg_pool2d(GAP, GAP.size()[2:]).squeeze()
+        GAP = F.avg_pool2d(GAP, GAP.size()[2:]).squeeze()
         #print('GAP ',GAP.shape)
         spe = self.species(GAP)
         return spe
@@ -86,10 +87,12 @@ class HpaModel(nn.Module):
                               device = device)])
         self.init_linear_comb = init_linear_comb
 
-        base_model = torch.hub.load('zhanghang1989/ResNeSt', base_model_name, pretrained=pretrained)
-        #print(base_model)
+        #base_model = torch.hub.load('zhanghang1989/ResNeSt', base_model_name, pretrained=pretrained)
+        #print(base_model_name)
+        self.model = EfficientNet.from_pretrained(base_model_name)#torch.hub.load('lukemelas/EfficientNet-PyTorch', base_model_name, pretrained=pretrained)
+        print(self.model)
         #print('the list ',list(base_model.children()))
-        layers = list(base_model.children())[:-1]
+        #layers = list(base_model.children())[:-2]
 
 
         self.init_layer = nn.Conv2d(in_channels=5, out_channels=3, kernel_size=1, stride=1,bias= True)
@@ -104,7 +107,7 @@ class HpaModel(nn.Module):
             self.init_layer.weight = torch.nn.Parameter(custom_weight, requires_grad=False)
 
 
-        self.model = nn.Sequential(*layers)
+        #self.model = nn.Sequential(*layers)
         self.fc = HpaSub(classes, features)
         self.autopool = Autopool(input_size = classes, device = device)
 
@@ -123,7 +126,10 @@ class HpaModel(nn.Module):
         #thinking about adding a batchnorm layer here.........
 
         #print('init layer c_in ',c_in.shape)
-        spe = self.model(c_in)
+        spe = self.model.extract_features(c_in)
+        #print('bef ato ',spe.shape)
+        #spe = torch.mean(spe, dim=2)
+        #print('aft ato ',spe.shape)
         spe = self.fc(spe)
         spe = spe.contiguous().view(batch_size, cells, -1)
         final_output, sigmoid_output = self.autopool(spe)
