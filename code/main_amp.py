@@ -41,13 +41,15 @@ def train(model,train_dataloader,optimizer,criterion):
         Y = Y.to(device, dtype=torch.float)
         X = X.permute(0,1,4,2,3)
         #print(X.shape)
-        optimizer.zero_grad()
+        for opti in optimizer:
+            opti.zero_grad()
         with torch.cuda.amp.autocast():
             prediction = model(X)
             train_loss = criterion(prediction['final_output'], Y) 
         
         scaler.scale(train_loss).backward()
-        scaler.step(optimizer)
+        for opti in optimizer:
+            scaler.step(opti)
         scaler.update()
 
         #train_loss.backward()
@@ -232,16 +234,20 @@ def run(fold):
                             features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
         model = model.to(device)
     # Optimizer
-    optimizer = optim.AdamW(model.parameters(), lr= LR)
+    #optimizer = optim.AdamW(model.parameters(), lr= LR)
+    param_groups = model.trainable_parameters()
+    optimizer0 = optim.AdamW(param_groups[0], lr= 1e-5)
+    optimizer1 = optim.AdamW(param_groups[1], lr= LR)
+    
 
     # Scheduler
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCH)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer1, T_max=EPOCH)
 
     best_val_AUROC = 0.0
     best_val_F1_score = 0.0
     best_val_loss = 10000.0
     for epoch in range (EPOCH):
-        train_loss = train(model,train_dataloader,optimizer,criterion)
+        train_loss = train(model,train_dataloader,[optimizer0,optimizer1],criterion)
         val_loss,val_scores = validation(model,valid_dataloader,criterion)
         scheduler.step()
         print('EPOCH ',epoch)
@@ -252,7 +258,8 @@ def run(fold):
         writer.add_scalar('AUROC/valid', val_scores['AUROC'], epoch)
         writer.add_scalar('F1_score/valid', val_scores['F1_score'], epoch)
 
-        for param_group in optimizer.param_groups:
+        for param_group in optimizer1.param_groups:
+            #print('this is param_group ',param_group)
             writer.add_scalar('LR',param_group["lr"],epoch)
 
         if val_scores['AUROC'] > best_val_AUROC:

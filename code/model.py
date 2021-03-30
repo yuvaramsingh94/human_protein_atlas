@@ -97,6 +97,8 @@ class HpaModel(nn.Module):
 
         self.init_layer = nn.Conv2d(in_channels=5, out_channels=3, kernel_size=1, stride=1,bias= True)
 
+        
+
         if self.init_linear_comb:
             #lets set the weights to combine protein channel with other channel
             #[img_red, img_yellow, img_green, img_blue] # green is protein of interest
@@ -110,6 +112,13 @@ class HpaModel(nn.Module):
         #self.model = nn.Sequential(*layers)
         self.fc = HpaSub(classes, features)
         self.autopool = Autopool(input_size = classes, device = device)
+
+        self.backbone = nn.ModuleList([self.model])
+        self.newly_added = nn.ModuleList([self.init_layer, self.fc, self.autopool])
+
+    def trainable_parameters(self):
+
+        return (list(self.backbone.parameters()), list(self.newly_added.parameters()))
 
     def forward(self, x):
         #with torch.cuda.amp.autocast():
