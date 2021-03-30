@@ -79,7 +79,7 @@ class HpaSub(nn.Module):
 class HpaModel(nn.Module):
     def __init__(self, classes, device, base_model_name, pretrained, features, init_linear_comb = False):
         super(HpaModel, self).__init__()
-
+        self.base_model_name = base_model_name
         mean_list = [0.083170892049318, 0.08627143702844145, 0.05734662013795027, 0.06582942296076659, 0.0]
         std_list = [0.13561066140407024, 0.13301454127989584, 0.09142918497144226, 0.15651865713966945, 1.]
         self.transform=transforms.Compose([Normalize(mean= mean_list,
@@ -89,8 +89,15 @@ class HpaModel(nn.Module):
 
         #base_model = torch.hub.load('zhanghang1989/ResNeSt', base_model_name, pretrained=pretrained)
         #print(base_model_name)
-        self.model = EfficientNet.from_pretrained(base_model_name)#torch.hub.load('lukemelas/EfficientNet-PyTorch', base_model_name, pretrained=pretrained)
-        print(self.model)
+        if 'efficientnet' in self.base_model_name:
+            self.model = EfficientNet.from_pretrained(self.base_model_name)#torch.hub.load('lukemelas/EfficientNet-PyTorch', self.base_model_name, pretrained=pretrained)
+            print(self.model)
+        else:
+            base_model = torch.hub.load('zhanghang1989/ResNeSt', self.base_model_name, pretrained=pretrained) 
+            print('the list ',list(base_model.children()))
+            layers = list(base_model.children())[:-2]
+            self.model = nn.Sequential(*layers)
+        
         #print('the list ',list(base_model.children()))
         #layers = list(base_model.children())[:-2]
 
@@ -135,7 +142,10 @@ class HpaModel(nn.Module):
         #thinking about adding a batchnorm layer here.........
 
         #print('init layer c_in ',c_in.shape)
-        spe = self.model.extract_features(c_in)
+        if 'efficientnet' in self.base_model_name:
+            spe = self.model.extract_features(c_in)
+        else:
+            spe = self.model(c_in)
         #print('bef ato ',spe.shape)
         #spe = torch.mean(spe, dim=2)
         #print('aft ato ',spe.shape)

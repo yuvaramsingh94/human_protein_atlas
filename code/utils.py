@@ -195,7 +195,7 @@ def score_metrics(preds, labels):
 
     return {'AUROC':ROC_AUC_score,'F1_score':F1_score}
 
-
+'''
 class focal_loss(nn.Module):
     def __init__(self, alpha=0.25, gamma=2, if_sigmoid = False, device = None):
         super(focal_loss, self).__init__()
@@ -229,6 +229,22 @@ class focal_loss(nn.Module):
 
         F_loss = (at * (1.0 - pt) ** self.gamma) * (BCE_loss.view(-1))
         return F_loss.mean()
+'''
 
+class focal_loss(nn.Module):
+    def __init__(self, alpha=0.25, gamma=2,):
+        super(focal_loss, self).__init__()
+        self.loss_fct = nn.BCEWithLogitsLoss(reduction='none')
+        self.alpha = alpha
+        self.gamma = gamma
 
+    def forward(
+        self,
+        preds,
+        targets,):
+        bce_loss = self.loss_fct(preds, targets)
+        probas = torch.sigmoid(preds)
+        loss = torch.where(targets >= 0.5, self.alpha * (1. - probas)**self.gamma * bce_loss, probas**self.gamma * bce_loss)
+        loss = loss.mean()
 
+        return loss

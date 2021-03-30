@@ -35,7 +35,8 @@ print(test_enc_df.head())
 predictions = test_enc_df[[str(i) for i in range(n_classes)]].values + test_enc_df_2[[str(i) for i in range(n_classes)]].values
 test_enc_df[[str(i) for i in range(n_classes)]] = predictions/2.
 
-
+test_enc_df['0'] = np.clip(test_enc_df['0'].values * SCALING, 0.0, 1.0)
+test_enc_df['16'] = np.clip(test_enc_df['16'].values * SCALING, 0.0, 1.0)
 
 tokens_list = test_enc_df.ID.unique()
 
@@ -60,4 +61,4 @@ sub_stage_2_df = pd.DataFrame.from_dict({'ID':token_list,"PredictionString":pred
 sub = pd.read_csv('data/sample_submission.csv')
 sub = sub.drop(['PredictionString'],axis=1)
 sub = sub.merge(sub_stage_2_df, on='ID')
-sub.to_csv(os.path.join(WORK_LOCATION,'submission_ensamble.csv'), index=False)
+sub.to_csv(os.path.join(WORK_LOCATION,'submission_ensamble_1.csv'), index=False)
