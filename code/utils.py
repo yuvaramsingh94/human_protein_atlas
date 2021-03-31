@@ -79,9 +79,12 @@ class hpa_dataset_v1(data.Dataset):
                 for i in range(1, self.cells_used + 1):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
+                        vv = (h['train_img'][...]*255.).astype(np.uint8)
                         if random.random() < self.aug_percent:
+                            ##print('augmentation')
                             vv = self.augmentation(image= vv)["image"]
+                        else:
+                            vv = (vv/255.).astype(np.float32)
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
                         rf_np = np.full(shape = (224,224), fill_value = rf)
@@ -96,10 +99,12 @@ class hpa_dataset_v1(data.Dataset):
                 for i in range(1, self.cells_used + 1):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
+                        vv = (h['train_img'][...]*255.).astype(np.uint8)
                         if random.random() < self.aug_percent:
                             ##print('augmentation')
                             vv = self.augmentation(image= vv)["image"]
+                        else:
+                            vv = (vv/255.).astype(np.float32)
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
                         rf_np = np.full(shape = (224,224), fill_value = rf)
@@ -114,9 +119,12 @@ class hpa_dataset_v1(data.Dataset):
                 for i in range(1, cell_count):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
+                        vv = (h['train_img'][...]*255.).astype(np.uint8)
                         if random.random() < self.aug_percent:
+                            ##print('augmentation')
                             vv = self.augmentation(image= vv)["image"]
+                        else:
+                            vv = (vv/255.).astype(np.float32)
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
                         rf_np = np.full(shape = (224,224), fill_value = rf)

@@ -19,6 +19,7 @@ import configparser
 import random
 # https://github.com/albumentations-team/albumentations/blob/master/albumentations/augmentations/transforms.py
 import albumentations as albu
+from augmix import RandomAugMix
 
 
 
@@ -318,6 +319,7 @@ def run(fold):
     best_val_AUROC = 0.0
     best_val_F1_score = 0.0
     best_val_loss = 10000.0
+    improvement_tracker = 0
     for epoch in range (EPOCH):
         train_loss = train(model,train_dataloader,optimizer,criterion)
         val_loss,val_scores = validation(model,valid_dataloader,criterion)
@@ -333,35 +335,43 @@ def run(fold):
         for param_group in optimizer.param_groups:
             #print('this is param_group ',param_group)
             writer.add_scalar('LR',param_group["lr"],epoch)
-
+        
         if val_scores['AUROC'] > best_val_AUROC:
             print(f"saving as we have {val_scores['AUROC']} val_AUROC which is improvement over {best_val_AUROC}")
             best_val_AUROC = val_scores['AUROC']
             
-            torch.save(
-                        model.state_dict(),
-                        f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_AUC_{fold}.pth",)
+            #torch.save(
+            #            model.state_dict(),
+            #            f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_AUC_{fold}.pth",)
 
         if val_scores['F1_score'] > best_val_F1_score:
             print(f"saving as we have {val_scores['F1_score']} val_F1_score which is improvement over {best_val_F1_score}")
             best_val_F1_score = val_scores['F1_score']
             
-            torch.save( model.state_dict(),
-                        f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_F1_{fold}.pth",)
+            #torch.save( model.state_dict(),
+            #            f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_F1_{fold}.pth",)
         
         if val_loss < best_val_loss:
+            improvement_tracker = 0
             print(f"saving as we have {val_loss} val_loss which is improvement over {best_val_loss}")
+            
             best_val_loss = val_loss
             
             torch.save( model.state_dict(),
                         f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_loss_{fold}.pth",)
+        else:
+            improvement_tracker += 1
+        print('improvement_tracker ',improvement_tracker)
+        #early stoping
+        if improvement_tracker > 6:# if we are not improving for more than 6 
+            break
 
     ### now we do the master check once . it should be slow so we do it once
     print("### Training ended ###")
     del model
     gc.collect()
 
-    writer.add_text('description',f'Here the  AUROC {best_val_AUROC} F1 {best_val_F1_score} loss {best_val_loss}',EPOCH)
+    writer.add_text('description',f'Here the  AUROC {best_val_AUROC} F1 {best_val_F1_score} loss {best_val_loss}',epoch)
     writer.close()
     
     
@@ -401,6 +411,8 @@ if __name__ == "__main__":
     aug_fn = albu.Compose(
         [
             # albu.OneOf([albu.RandomBrightness(limit=.15), albu.RandomContrast(limit=.3), albu.RandomGamma()], p=.25),
+            RandomAugMix(p=.7),
+            
             albu.HorizontalFlip(p=.5),
             albu.VerticalFlip(p=.5),
             albu.Cutout(
@@ -411,7 +423,8 @@ if __name__ == "__main__":
                 always_apply=False,
                 p=0.5,
             ),
-            albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, p=0.7),
+            #albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, p=0.7),
+            albu.ToFloat(max_value=255.,always_apply=True),
         ]
     )
 
