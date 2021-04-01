@@ -41,7 +41,7 @@ def train(model,train_dataloader,optimizer,criterion):
         X = X.to(device, dtype=torch.float)
         Y = Y.to(device, dtype=torch.float)
         X = X.permute(0,1,4,2,3)
-        #print(X.shape)
+        #print(X[:,:,:4,:,:].min(), X.max())
         
         optimizer.zero_grad()
         with torch.cuda.amp.autocast():
@@ -363,7 +363,7 @@ def run(fold):
             improvement_tracker += 1
         print('improvement_tracker ',improvement_tracker)
         #early stoping
-        if improvement_tracker > 6:# if we are not improving for more than 6 
+        if improvement_tracker > 10:# if we are not improving for more than 6 
             break
 
     ### now we do the master check once . it should be slow so we do it once
@@ -407,11 +407,11 @@ if __name__ == "__main__":
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}"):
         os.mkdir(f"weights/{WEIGHT_SAVE}")
-
+    
     aug_fn = albu.Compose(
         [
             # albu.OneOf([albu.RandomBrightness(limit=.15), albu.RandomContrast(limit=.3), albu.RandomGamma()], p=.25),
-            RandomAugMix(p=.7),
+            RandomAugMix(p=.3),
             
             albu.HorizontalFlip(p=.5),
             albu.VerticalFlip(p=.5),
@@ -427,7 +427,7 @@ if __name__ == "__main__":
             albu.ToFloat(max_value=255.,always_apply=True),
         ]
     )
-
+    
 
     #for amp
     scaler = torch.cuda.amp.GradScaler()
@@ -441,7 +441,7 @@ if __name__ == "__main__":
 
     oof_list = []
     for fold in range(FOLDS):
-        val_o_df = val_oof(fold, metrics = 'AUC')
+        val_o_df = val_oof(fold, metrics = 'loss')
         
         oof_list.append(val_o_df)
     
