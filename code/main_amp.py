@@ -19,6 +19,7 @@ import configparser
 import random
 # https://github.com/albumentations-team/albumentations/blob/master/albumentations/augmentations/transforms.py
 import albumentations as albu
+from augmix import RandomAugMix
 
 
 
@@ -40,13 +41,15 @@ def train(model,train_dataloader,optimizer,criterion):
         X = X.to(device, dtype=torch.float)
         Y = Y.to(device, dtype=torch.float)
         X = X.permute(0,1,4,2,3)
-        #print(X.shape)
+        #print(X[:,:,:4,:,:].min(), X.max())
+        
         optimizer.zero_grad()
         with torch.cuda.amp.autocast():
             prediction = model(X)
             train_loss = criterion(prediction['final_output'], Y) 
         
         scaler.scale(train_loss).backward()
+        
         scaler.step(optimizer)
         scaler.update()
 
@@ -158,6 +161,53 @@ def val_oof(fold, metrics):
     valid_df[[str(f'pred_{i}') for i in range(int(config['general']['classes']))]] = predictions
     return valid_df
 
+def get_sample_counts(df, class_names):
+    """
+    Get total and class-wise positive sample count of a dataset
+    Arguments:
+    output_dir - str, folder of dataset.csv
+    dataset - str, train|dev|test
+    class_names - list of str, target classes
+    Returns:
+    total_count - int
+    class_positive_counts - dict of int, ex: {"Effusion": 300, "Infiltration": 500 ...}
+    """
+    
+    total_count = df.shape[0]
+    labels = df[class_names].values
+    positive_counts = np.sum(labels, axis=0)
+    class_positive_counts = dict(zip(class_names, positive_counts))
+    return total_count, class_positive_counts
+
+def get_class_weights(total_counts, class_positive_counts, multiply):
+    """
+    Calculate class_weight used in training
+    Arguments:
+    total_counts - int
+    class_positive_counts - dict of int, ex: {"Effusion": 300, "Infiltration": 500 ...}
+    multiply - int, positve weighting multiply
+    use_class_balancing - boolean 
+    Returns:
+    class_weight - dict of dict, ex: {"Effusion": { 0: 0.01, 1: 0.99 }, ... }
+    """
+    def get_single_class_weight(pos_counts, total_counts):
+        denominator = (total_counts - pos_counts) * multiply + pos_counts
+        return {
+            0: pos_counts / denominator,
+            1: (denominator - pos_counts) / denominator,
+        }
+    def get_single_class_weight2(pos_counts, total_counts):
+        denominator = (total_counts - pos_counts) * multiply + pos_counts
+        return (denominator - pos_counts) / denominator
+
+    class_names = list(class_positive_counts.keys())
+    label_counts = np.array(list(class_positive_counts.values()))
+    class_weights = []
+    for i, class_name in enumerate(class_names):
+        class_weights.append(get_single_class_weight2(label_counts[i], total_counts))
+
+    return class_weights
+
 def run(fold):
 
     train_df = train_base_df[train_base_df['fold'] != fold]
@@ -187,7 +237,31 @@ def run(fold):
     if  os.path.exists(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/log_dir"):
         shutil.rmtree(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/log_dir")
 
-    
+    class_weights = None
+    if config.getboolean('general','class_weights'):
+        class_weights = ((train_df[[f'{i}' for i in range(0,19)]].sum().min())/train_df[[f'{i}' for i in range(0,19)]].sum()).values
+        #print('this is class weights ',class_weights)
+
+        total_count, class_positive_counts = get_sample_counts(train_df, [f'{i}' for i in range(0,19)])
+        print('weight calcualtions')
+        print(total_count, class_positive_counts)
+        class_weights = get_class_weights(total_count, class_positive_counts, multiply = 1)
+        print('class_weights')
+        print(class_weights)
+
+    if config['general']['loss'] == 'BCE':
+        #criterion = nn.BCELoss().cuda()
+        if class_weights != None:
+            criterion = nn.BCEWithLogitsLoss(weight=torch.tensor(class_weights, requires_grad = False)).cuda(device=device)
+        else:
+            criterion = nn.BCEWithLogitsLoss().cuda(device=device)
+    if config['general']['loss'] == 'MSE':
+        criterion = torch.nn.MSELoss().cuda(device=device)
+    if config['general']['loss'] == 'focal':
+        print('Using Focal loss')
+        criterion = focal_loss(alpha=0.25, gamma=2).cuda(device=device)
+
+
     writer = SummaryWriter(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/log_dir")
 
     writer.add_text('description',f'This is done using config {args.config_file[0]} ')
@@ -232,7 +306,12 @@ def run(fold):
                             features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
         model = model.to(device)
     # Optimizer
+    #optimizer = optim.AdamW(model.parameters(), lr= LR)
+    #param_groups = model.trainable_parameters()
+    #optimizer0 = optim.AdamW(param_groups[0], lr= 1e-5)
+    #optimizer1 = optim.AdamW(param_groups[1], lr= LR)
     optimizer = optim.AdamW(model.parameters(), lr= LR)
+    
 
     # Scheduler
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCH)
@@ -240,6 +319,7 @@ def run(fold):
     best_val_AUROC = 0.0
     best_val_F1_score = 0.0
     best_val_loss = 10000.0
+    improvement_tracker = 0
     for epoch in range (EPOCH):
         train_loss = train(model,train_dataloader,optimizer,criterion)
         val_loss,val_scores = validation(model,valid_dataloader,criterion)
@@ -253,36 +333,45 @@ def run(fold):
         writer.add_scalar('F1_score/valid', val_scores['F1_score'], epoch)
 
         for param_group in optimizer.param_groups:
+            #print('this is param_group ',param_group)
             writer.add_scalar('LR',param_group["lr"],epoch)
-
+        
         if val_scores['AUROC'] > best_val_AUROC:
             print(f"saving as we have {val_scores['AUROC']} val_AUROC which is improvement over {best_val_AUROC}")
             best_val_AUROC = val_scores['AUROC']
             
-            torch.save(
-                        model.state_dict(),
-                        f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_AUC_{fold}.pth",)
+            #torch.save(
+            #            model.state_dict(),
+            #            f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_AUC_{fold}.pth",)
 
         if val_scores['F1_score'] > best_val_F1_score:
             print(f"saving as we have {val_scores['F1_score']} val_F1_score which is improvement over {best_val_F1_score}")
             best_val_F1_score = val_scores['F1_score']
             
-            torch.save( model.state_dict(),
-                        f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_F1_{fold}.pth",)
+            #torch.save( model.state_dict(),
+            #            f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_F1_{fold}.pth",)
         
         if val_loss < best_val_loss:
+            improvement_tracker = 0
             print(f"saving as we have {val_loss} val_loss which is improvement over {best_val_loss}")
+            
             best_val_loss = val_loss
             
             torch.save( model.state_dict(),
                         f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_loss_{fold}.pth",)
+        else:
+            improvement_tracker += 1
+        print('improvement_tracker ',improvement_tracker)
+        #early stoping
+        if improvement_tracker > 10:# if we are not improving for more than 6 
+            break
 
     ### now we do the master check once . it should be slow so we do it once
     print("### Training ended ###")
     del model
     gc.collect()
 
-    writer.add_text('description',f'Here the  AUROC {best_val_AUROC} F1 {best_val_F1_score} loss {best_val_loss}',EPOCH)
+    writer.add_text('description',f'Here the  AUROC {best_val_AUROC} F1 {best_val_F1_score} loss {best_val_loss}',epoch)
     writer.close()
     
     
@@ -312,22 +401,18 @@ if __name__ == "__main__":
     print('init_linear_comb', config.getboolean('general','init_linear_comb'), type(config.getboolean('general','init_linear_comb')))
     train_base_df = pd.read_csv(config['general']['data_csv'])
     #train_base_df = pd.read_csv('data/train_fold_v1.csv')
-    if config['general']['loss'] == 'BCE':
-        #criterion = nn.BCELoss().cuda()
-        criterion = nn.BCEWithLogitsLoss().cuda()
-    if config['general']['loss'] == 'MSE':
-        criterion = torch.nn.MSELoss().cuda()
-    if config['general']['loss'] == 'focal':
-        print('Using Focal loss')
-        criterion = focal_loss(alpha=0.25, gamma=2, if_sigmoid = True, device = device).cuda()
+
+    
 
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}"):
         os.mkdir(f"weights/{WEIGHT_SAVE}")
-
+    
     aug_fn = albu.Compose(
         [
             # albu.OneOf([albu.RandomBrightness(limit=.15), albu.RandomContrast(limit=.3), albu.RandomGamma()], p=.25),
+            RandomAugMix(p=.3),
+            
             albu.HorizontalFlip(p=.5),
             albu.VerticalFlip(p=.5),
             albu.Cutout(
@@ -338,10 +423,11 @@ if __name__ == "__main__":
                 always_apply=False,
                 p=0.5,
             ),
-            albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, p=0.7),
+            #albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, p=0.7),
+            albu.ToFloat(max_value=255.,always_apply=True),
         ]
     )
-
+    
 
     #for amp
     scaler = torch.cuda.amp.GradScaler()
@@ -355,7 +441,7 @@ if __name__ == "__main__":
 
     oof_list = []
     for fold in range(FOLDS):
-        val_o_df = val_oof(fold, metrics = 'AUC')
+        val_o_df = val_oof(fold, metrics = 'loss')
         
         oof_list.append(val_o_df)
     

@@ -79,9 +79,12 @@ class hpa_dataset_v1(data.Dataset):
                 for i in range(1, self.cells_used + 1):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
+                        vv = (h['train_img'][...]*255.).astype(np.uint8)
                         if random.random() < self.aug_percent:
+                            ##print('augmentation')
                             vv = self.augmentation(image= vv)["image"]
+                        else:
+                            vv = (vv/255.).astype(np.float32)
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
                         rf_np = np.full(shape = (224,224), fill_value = rf)
@@ -96,10 +99,12 @@ class hpa_dataset_v1(data.Dataset):
                 for i in range(1, self.cells_used + 1):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
+                        vv = (h['train_img'][...]*255.).astype(np.uint8)
                         if random.random() < self.aug_percent:
                             ##print('augmentation')
                             vv = self.augmentation(image= vv)["image"]
+                        else:
+                            vv = (vv/255.).astype(np.float32)
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
                         rf_np = np.full(shape = (224,224), fill_value = rf)
@@ -114,9 +119,12 @@ class hpa_dataset_v1(data.Dataset):
                 for i in range(1, cell_count):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
+                        vv = (h['train_img'][...]*255.).astype(np.uint8)
                         if random.random() < self.aug_percent:
+                            ##print('augmentation')
                             vv = self.augmentation(image= vv)["image"]
+                        else:
+                            vv = (vv/255.).astype(np.float32)
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
                         rf_np = np.full(shape = (224,224), fill_value = rf)
@@ -195,7 +203,7 @@ def score_metrics(preds, labels):
 
     return {'AUROC':ROC_AUC_score,'F1_score':F1_score}
 
-
+'''
 class focal_loss(nn.Module):
     def __init__(self, alpha=0.25, gamma=2, if_sigmoid = False, device = None):
         super(focal_loss, self).__init__()
@@ -229,6 +237,22 @@ class focal_loss(nn.Module):
 
         F_loss = (at * (1.0 - pt) ** self.gamma) * (BCE_loss.view(-1))
         return F_loss.mean()
+'''
 
+class focal_loss(nn.Module):
+    def __init__(self, alpha=0.25, gamma=2,):
+        super(focal_loss, self).__init__()
+        self.loss_fct = nn.BCEWithLogitsLoss(reduction='none')
+        self.alpha = alpha
+        self.gamma = gamma
 
+    def forward(
+        self,
+        preds,
+        targets,):
+        bce_loss = self.loss_fct(preds, targets)
+        probas = torch.sigmoid(preds)
+        loss = torch.where(targets >= 0.5, self.alpha * (1. - probas)**self.gamma * bce_loss, probas**self.gamma * bce_loss)
+        loss = loss.mean()
 
+        return loss
