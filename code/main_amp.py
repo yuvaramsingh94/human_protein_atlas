@@ -411,7 +411,7 @@ if __name__ == "__main__":
     aug_fn = albu.Compose(
         [
             # albu.OneOf([albu.RandomBrightness(limit=.15), albu.RandomContrast(limit=.3), albu.RandomGamma()], p=.25),
-            RandomAugMix(p=.3),
+            #RandomAugMix(p=.3),
             
             albu.HorizontalFlip(p=.5),
             albu.VerticalFlip(p=.5),
