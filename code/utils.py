@@ -9,6 +9,7 @@ from sklearn.metrics import f1_score, roc_auc_score
 import time
 import torch.nn as nn
 import torch.nn.functional as F
+import albumentations as albu
 #from torchvision import transforms
 
 def set_seed(seed: int = 42):
@@ -49,14 +50,17 @@ class Normalize:
         return tensor
 
 class hpa_dataset_v1(data.Dataset):
-    def __init__(self, main_df, augmentation = None, path=None,  aug_per = 0.0, cells_used = 8, is_validation = False):
+    def __init__(self, main_df, augmentation = None, path=None,  aug_per = 0.0, cells_used = 8, label_smoothing = False, l_alp = 0.3, is_validation = False):
         self.main_df = main_df
         self.aug_percent = aug_per
         self.augmentation = augmentation
+        self.float_conv = albu.Compose([albu.ToFloat(max_value=255.,always_apply=True)])
         self.label_col = [str(i) for i in range(19)]
         self.cells_used = cells_used
         self.path = path
         self.is_validation = is_validation
+        self.label_smoothing = label_smoothing
+        self.l_alp = l_alp
 
         #self.transform = transforms.Compose([transforms.ToTensor()])
 
@@ -79,12 +83,11 @@ class hpa_dataset_v1(data.Dataset):
                 for i in range(1, self.cells_used + 1):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
-                        vv = (h['train_img'][...]*255.).astype(np.uint8)
+                        vv = h['train_img'][...]
                         if random.random() < self.aug_percent:
-                            ##print('augmentation')
                             vv = self.augmentation(image= vv)["image"]
                         else:
-                            vv = (vv/255.).astype(np.float32)
+                            vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
                         rf_np = np.full(shape = (224,224), fill_value = rf)
@@ -99,12 +102,12 @@ class hpa_dataset_v1(data.Dataset):
                 for i in range(1, self.cells_used + 1):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
-                        vv = (h['train_img'][...]*255.).astype(np.uint8)
+                        vv = h['train_img'][...]
                         if random.random() < self.aug_percent:
                             ##print('augmentation')
                             vv = self.augmentation(image= vv)["image"]
                         else:
-                            vv = (vv/255.).astype(np.float32)
+                            vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
                         rf_np = np.full(shape = (224,224), fill_value = rf)
@@ -119,12 +122,11 @@ class hpa_dataset_v1(data.Dataset):
                 for i in range(1, cell_count):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
-                        vv = (h['train_img'][...]*255.).astype(np.uint8)
+                        vv = h['train_img'][...]
                         if random.random() < self.aug_percent:
-                            ##print('augmentation')
                             vv = self.augmentation(image= vv)["image"]
                         else:
-                            vv = (vv/255.).astype(np.float32)
+                            vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
                         rf_np = np.full(shape = (224,224), fill_value = rf)
@@ -138,6 +140,10 @@ class hpa_dataset_v1(data.Dataset):
                 ##print('train_img ',train_img.shape)
                 train_img = np.concatenate([train_img, zero_arr], axis=0)
                 target_vec[-1] = 1# as we are adding black img . negative = 1 also
+
+            #### label smoothening
+            if self.label_smoothing:
+                target_vec = (1. - self.l_alp) * target_vec + self.l_alp / 19
         else:
             if cell_count == self.cells_used:
                 cell_list = []
@@ -145,6 +151,7 @@ class hpa_dataset_v1(data.Dataset):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
+                        vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
                         rf_np = np.full(shape = (224,224), fill_value = rf)
@@ -160,6 +167,7 @@ class hpa_dataset_v1(data.Dataset):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
+                        vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
                         rf_np = np.full(shape = (224,224), fill_value = rf)
@@ -175,6 +183,7 @@ class hpa_dataset_v1(data.Dataset):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
+                        vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
                         rf_np = np.full(shape = (224,224), fill_value = rf)

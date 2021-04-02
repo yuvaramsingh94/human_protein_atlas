@@ -41,7 +41,7 @@ def train(model,train_dataloader,optimizer,criterion):
         X = X.to(device, dtype=torch.float)
         Y = Y.to(device, dtype=torch.float)
         X = X.permute(0,1,4,2,3)
-        #print(X[:,:,:4,:,:].min(), X.max())
+        print(X[:,:,:4,:,:].min(), X.max())
         
         optimizer.zero_grad()
         with torch.cuda.amp.autocast():
@@ -410,8 +410,13 @@ if __name__ == "__main__":
     
     aug_fn = albu.Compose(
         [
-            # albu.OneOf([albu.RandomBrightness(limit=.15), albu.RandomContrast(limit=.3), albu.RandomGamma()], p=.25),
-            RandomAugMix(p=.3),
+            RandomAugMix(p=.5),
+            albu.OneOf([
+                albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, border_mode = 1),
+                albu.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, border_mode=1),
+                albu.GridDistortion(num_steps=5, distort_limit=0.3, interpolation=1, border_mode=1),
+            ], p=.7),
+            
             
             albu.HorizontalFlip(p=.5),
             albu.VerticalFlip(p=.5),
@@ -420,7 +425,6 @@ if __name__ == "__main__":
                 max_h_size=16,
                 max_w_size=16,
                 fill_value=0,
-                always_apply=False,
                 p=0.5,
             ),
             #albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, p=0.7),

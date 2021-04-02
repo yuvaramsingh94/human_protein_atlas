@@ -5,13 +5,14 @@ import imageio
 import os
 import pandas as pd
 import h5py
-from skimage.transform import resize
+#from skimage.transform import resize
 from joblib import delayed, Parallel
+import cv2
 
 train_df = pd.read_csv('data/train.csv')
 
 AREA = 30000
-version = 'v3'
+version = 'v4'
 
 def img_splitter(im_tok):
     #img_filename = img_token+'.png'
@@ -46,16 +47,23 @@ def img_splitter(im_tok):
             non_zero_count = np.count_nonzero(cropped_arr[:,:,2])
             relative_freq = np.array(non_zero_count/(cropped_arr.shape[0] * cropped_arr.shape[1]))
             #print('relative freq ', relative_freq)
-            cropped_arr = resize(cropped_arr, (224, 224))
+            actual_h = cropped_arr.shape[0]
+            actual_w = cropped_arr.shape[1]
+            cropped_arr = cv2.resize(cropped_arr, (224, 224))
+            #print('after resize ',cropped_arr.min(),cropped_arr.max())
             if not os.path.exists(f"data/train_h5_224_{AREA}_{version}/{im_tok}"):
                 os.mkdir(f"data/train_h5_224_{AREA}_{version}/{im_tok}")
 
             hdf5_path = os.path.join(f"data/train_h5_224_{AREA}_{version}/{im_tok}",f'{im_tok}_{count}.hdf5')
             hdf5_file = h5py.File(hdf5_path, mode='w')
-            hdf5_file.create_dataset("train_img",cropped_arr.shape,np.float)
+            hdf5_file.create_dataset("train_img",cropped_arr.shape,np.uint8)
             hdf5_file.create_dataset("protein_rf",relative_freq.shape,np.float)
+            hdf5_file.create_dataset("actual_h",relative_freq.shape,np.int)
+            hdf5_file.create_dataset("actual_w",relative_freq.shape,np.int)
             hdf5_file["train_img"][...] = cropped_arr
             hdf5_file["protein_rf"][...] = relative_freq
+            hdf5_file["actual_h"][...] = actual_h
+            hdf5_file["actual_w"][...] = actual_w
             hdf5_file.close()
             
 

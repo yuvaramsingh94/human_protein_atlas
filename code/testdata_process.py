@@ -225,7 +225,7 @@ model_fold_1.eval()
 model_fold_2 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'efficientnet-b4', features = 1792, pretrained = False, init_linear_comb = False)
 
-model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_2/model_{metric_use}_{2}.pth",map_location = device))
+model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_1/model_{metric_use}_{2}.pth",map_location = device))
 model_fold_2.to(device)
 model_fold_2.eval()
 
