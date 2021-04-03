@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 from utils import Normalize
+from efficientnet_pytorch import EfficientNet
 
 class Autopool(nn.Module):
     def __init__(
@@ -85,7 +86,7 @@ class AttBlock(nn.Module):
         #print('cla ',cla.shape)
         x = torch.sum(norm_att * cla, dim=2)
         #print('sum ',x.shape)
-        x = torch.clamp(x, min=0.0, max = 1.0)
+        #x = torch.clamp(x, min=0.0, max = 1.0)
         return x, norm_att, cla
 
     def nonlinear_transform(self, x):
@@ -121,18 +122,17 @@ class HpaModel(nn.Module):
                               std= std_list,
                               device = device)])
 
-        base_model = torch.hub.load('pytorch/vision', base_model_name, pretrained=pretrained)
-        #print(base_model)
-        #print('the list ',list(base_model.children()))
-        layers = list(base_model.children())[:-1]
-
-
+        if 'efficientnet' in self.base_model_name:
+            self.model = EfficientNet.from_pretrained(self.base_model_name)#torch.hub.load('lukemelas/EfficientNet-PyTorch', self.base_model_name, pretrained=pretrained)
+            print(self.model)
+        else:
+            base_model = torch.hub.load('zhanghang1989/ResNeSt', self.base_model_name, pretrained=pretrained) 
+            print('the list ',list(base_model.children()))
+            layers = list(base_model.children())[:-2]
+            self.model = nn.Sequential(*layers)
         self.init_layer = nn.Conv2d(in_channels=4, out_channels=3, kernel_size=1, stride=1)
-
-
-        self.model = nn.Sequential(*layers)
         self.fc1 = nn.Linear(features, features, bias=True)
-        self.att_block = AttBlock(features, classes, activation="sigmoid")
+        self.att_block = AttBlock(features, classes, activation="linear")
 
     def forward(self, x):
         batch_size, cells, C, H, W = x.size()
