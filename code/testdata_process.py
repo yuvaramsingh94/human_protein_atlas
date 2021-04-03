@@ -130,8 +130,8 @@ for sub in sub_dfs:
             print('hitting except ',e)
             continue
 '''
-#'''
-AREA = 40000
+'''
+AREA = 50000
 def img_splitter(im_tok):
 
     img_red    = np.expand_dims(imageio.imread(os.path.join('data/test',f'{im_tok}_red.png')), axis = -1)
@@ -149,8 +149,8 @@ def img_splitter(im_tok):
         print('img shape ',image.shape)
         print('mask shape ',img_mask.shape)
 
-    if not os.path.exists(f"data/test_h5_224_40000/{im_tok}"):
-                os.mkdir(f"data/test_h5_224_40000/{im_tok}")
+    if not os.path.exists(f"data/test_h5_224_50000/{im_tok}"):
+                os.mkdir(f"data/test_h5_224_50000/{im_tok}")
     count = 0
     for i in range(1, img_mask.max() + 1):
         bmask = img_mask == i
@@ -178,7 +178,7 @@ def img_splitter(im_tok):
             count += 1
             cropped_arr = resize(cropped_arr, (224, 224))
 
-            hdf5_path = os.path.join(f'data/test_h5_224_40000/{im_tok}',f'{im_tok}_{i}.hdf5')
+            hdf5_path = os.path.join(f'data/test_h5_224_50000/{im_tok}',f'{im_tok}_{i}.hdf5')
             hdf5_file = h5py.File(hdf5_path, mode='w')
             hdf5_file.create_dataset("test_img",cropped_arr.shape,np.float)
             hdf5_file.create_dataset("protein_rf",relative_freq.shape,np.float)
@@ -195,20 +195,20 @@ token_list = []
 token_count = []
 token_enc = []
 
-if not os.path.exists(f"data/test_h5_224_40000"):
-                os.mkdir(f"data/test_h5_224_40000")
+if not os.path.exists(f"data/test_h5_224_50000"):
+                os.mkdir(f"data/test_h5_224_50000")
 
 for i in tqdm(img_token_list):
     img_splitter(i)
 
 test_enc_df = pd.DataFrame.from_dict({'ID': token_list, 'count': token_count, 'encoding': token_enc})
-test_enc_df.to_csv('data/test_enc_v5.csv',index=False)
+test_enc_df.to_csv('data/test_enc_v6.csv',index=False)
 '''
 BATCH_SIZE = 64
 WORKERS = 15
 n_classes = 19
 metric_use = 'loss'
-vees = 'v2_3_10_3'
+vees = 'v2_3_11_5_3'
 WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
 
 
@@ -217,26 +217,26 @@ WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
 if not os.path.exists(WORK_LOCATION):
         os.mkdir(WORK_LOCATION)
 
-device = torch.device("cuda:1")
+device = torch.device("cuda:3")
 MODEL_PATH = f'weights/version_{vees}'
 n_classes = 19
 # config_v1.ini
 model_fold_0 = HpaModel(classes = n_classes, device = device, 
-                        base_model_name = 'resnest50', features = 2048, pretrained = False, init_linear_comb = False)
+                        base_model_name = 'efficientnet-b4', features = 1792, pretrained = False, init_linear_comb = False)
 
 model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_1/model_{metric_use}_{0}.pth",map_location = device))
 model_fold_0.to(device)
 model_fold_0.eval()
 
 model_fold_1 = HpaModel(classes = n_classes, device = device, 
-                        base_model_name = 'resnest50', features = 2048, pretrained = False, init_linear_comb = False)
+                        base_model_name = 'efficientnet-b4', features = 1792, pretrained = False, init_linear_comb = False)
 
 model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_1/model_{metric_use}_{1}.pth",map_location = device))
 model_fold_1.to(device)
 model_fold_1.eval()
 
 model_fold_2 = HpaModel(classes = n_classes, device = device, 
-                        base_model_name = 'resnest50', features = 2048, pretrained = False, init_linear_comb = False)
+                        base_model_name = 'efficientnet-b4', features = 1792, pretrained = False, init_linear_comb = False)
 
 model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_1/model_{metric_use}_{2}.pth",map_location = device))
 model_fold_2.to(device)
@@ -293,7 +293,7 @@ class hpa_dataset(data.Dataset):
             vv = np.dstack([vv,rf_np])
         return { 'image':vv}
 
-test_enc_df = pd.read_csv('data/test_enc_v4.csv')#[:10]
+test_enc_df = pd.read_csv('data/test_enc_v5.csv')#[:10]
 
 test_dataset = hpa_dataset(main_df = test_enc_df, path = 'data/test_h5_224_40000/')
 test_dataloader = data.DataLoader(
@@ -351,7 +351,7 @@ sub_stage_2_df = pd.DataFrame.from_dict({'ID':token_list,"PredictionString":pred
 sub = pd.read_csv('data/sample_submission.csv')
 sub = sub.drop(['PredictionString'],axis=1)
 sub = sub.merge(sub_stage_2_df, on='ID')
-sub.to_csv(os.path.join(WORK_LOCATION,'submission_30000.csv'), index=False)
+sub.to_csv(os.path.join(WORK_LOCATION,'submission_40000.csv'), index=False)
 #'''
 
 
@@ -366,4 +366,12 @@ data/test_h5_224_30000/
 above 30000
 data/test_enc_v4.csv
 data/test_h5_224_30000_v2/
+
+above 40000
+test_enc_v5.csv
+data/test_h5_224_40000
+
+above 50000
+test_enc_v6.csv
+test_h5_224_50000
 '''

@@ -140,11 +140,16 @@ class hpa_dataset_v1(data.Dataset):
                 ##print('train_img ',train_img.shape)
                 train_img = np.concatenate([train_img, zero_arr], axis=0)
                 target_vec[-1] = 1# as we are adding black img . negative = 1 also
+                #print('black ',target_vec)
 
             #### label smoothening
             if self.label_smoothing:
                 #print('sm')
+                if target_vec.sum() == 1:
+                    #print('sum is one ',target_vec)
+                    target_vec[-1] = 1
                 target_vec = (1. - self.l_alp) * target_vec + self.l_alp / 19
+                #target_vec[-1] = 1
                 #print(target_vec)
         else:
             if cell_count == self.cells_used:
