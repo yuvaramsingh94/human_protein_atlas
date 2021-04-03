@@ -130,8 +130,8 @@ for sub in sub_dfs:
             print('hitting except ',e)
             continue
 '''
-'''
-AREA = 30000
+#'''
+AREA = 40000
 def img_splitter(im_tok):
 
     img_red    = np.expand_dims(imageio.imread(os.path.join('data/test',f'{im_tok}_red.png')), axis = -1)
@@ -149,8 +149,8 @@ def img_splitter(im_tok):
         print('img shape ',image.shape)
         print('mask shape ',img_mask.shape)
 
-    if not os.path.exists(f"data/test_h5_224_30000_v2/{im_tok}"):
-                os.mkdir(f"data/test_h5_224_30000_v2/{im_tok}")
+    if not os.path.exists(f"data/test_h5_224_40000/{im_tok}"):
+                os.mkdir(f"data/test_h5_224_40000/{im_tok}")
     count = 0
     for i in range(1, img_mask.max() + 1):
         bmask = img_mask == i
@@ -178,7 +178,7 @@ def img_splitter(im_tok):
             count += 1
             cropped_arr = resize(cropped_arr, (224, 224))
 
-            hdf5_path = os.path.join(f'data/test_h5_224_30000_v2/{im_tok}',f'{im_tok}_{i}.hdf5')
+            hdf5_path = os.path.join(f'data/test_h5_224_40000/{im_tok}',f'{im_tok}_{i}.hdf5')
             hdf5_file = h5py.File(hdf5_path, mode='w')
             hdf5_file.create_dataset("test_img",cropped_arr.shape,np.float)
             hdf5_file.create_dataset("protein_rf",relative_freq.shape,np.float)
@@ -195,14 +195,14 @@ token_list = []
 token_count = []
 token_enc = []
 
-if not os.path.exists(f"data/test_h5_224_30000_v2"):
-                os.mkdir(f"data/test_h5_224_30000_v2")
+if not os.path.exists(f"data/test_h5_224_40000"):
+                os.mkdir(f"data/test_h5_224_40000")
 
 for i in tqdm(img_token_list):
     img_splitter(i)
 
 test_enc_df = pd.DataFrame.from_dict({'ID': token_list, 'count': token_count, 'encoding': token_enc})
-test_enc_df.to_csv('data/test_enc_v4.csv',index=False)
+test_enc_df.to_csv('data/test_enc_v5.csv',index=False)
 '''
 BATCH_SIZE = 64
 WORKERS = 15
@@ -295,7 +295,7 @@ class hpa_dataset(data.Dataset):
 
 test_enc_df = pd.read_csv('data/test_enc_v4.csv')#[:10]
 
-test_dataset = hpa_dataset(main_df = test_enc_df, path = 'data/test_h5_224_30000_v2/')
+test_dataset = hpa_dataset(main_df = test_enc_df, path = 'data/test_h5_224_40000/')
 test_dataloader = data.DataLoader(
         test_dataset,
         batch_size=BATCH_SIZE,
@@ -353,3 +353,17 @@ sub = sub.drop(['PredictionString'],axis=1)
 sub = sub.merge(sub_stage_2_df, on='ID')
 sub.to_csv(os.path.join(WORK_LOCATION,'submission_30000.csv'), index=False)
 #'''
+
+
+
+
+'''
+all included
+data/test_enc_v3.csv
+data/test_h5_224_30000/
+
+
+above 30000
+data/test_enc_v4.csv
+data/test_h5_224_30000_v2/
+'''

@@ -143,7 +143,9 @@ class hpa_dataset_v1(data.Dataset):
 
             #### label smoothening
             if self.label_smoothing:
+                #print('sm')
                 target_vec = (1. - self.l_alp) * target_vec + self.l_alp / 19
+                #print(target_vec)
         else:
             if cell_count == self.cells_used:
                 cell_list = []
