@@ -41,7 +41,7 @@ def train(model,train_dataloader,optimizer,criterion):
         X = X.to(device, dtype=torch.float)
         Y = Y.to(device, dtype=torch.float)
         X = X.permute(0,1,4,2,3)
-        print(X[:,:,:4,:,:].min(), X.max())
+        #print(X[:,:,:4,:,:].min(), X.max())
         
         optimizer.zero_grad()
         with torch.cuda.amp.autocast():
@@ -79,6 +79,7 @@ def validation(model,valid_dataloader,criterion):
             X = X.to(device, dtype=torch.float)
             Y = Y.to(device, dtype=torch.float)
             X = X.permute(0,1,4,2,3)
+            #print(X[:,:,:4,:,:].min(), X.max())
             
             with torch.cuda.amp.autocast():
                 prediction = model(X)
@@ -228,7 +229,8 @@ def run(fold):
 
     print(f'Train df {train_df.shape} valid df {valid_df.shape}')
 
-    train_dataset = hpa_dataset_v1(main_df = train_df, path = DATA_PATH, augmentation = aug_fn, aug_per= 0.8, cells_used = cells_used)
+    train_dataset = hpa_dataset_v1(main_df = train_df, path = DATA_PATH, augmentation = aug_fn, aug_per= 0.8, 
+                                    cells_used = cells_used,label_smoothing = False, l_alp = 0.0)
     valid_dataset = hpa_dataset_v1(main_df = valid_df, path = DATA_PATH, cells_used = cells_used, is_validation = True)
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}"):
@@ -363,7 +365,7 @@ def run(fold):
             improvement_tracker += 1
         print('improvement_tracker ',improvement_tracker)
         #early stoping
-        if improvement_tracker > 10:# if we are not improving for more than 6 
+        if improvement_tracker > 6:# if we are not improving for more than 6 
             break
 
     ### now we do the master check once . it should be slow so we do it once
