@@ -15,6 +15,9 @@ from skimage.transform import resize
 from model import HpaModel, HpaModel_1, HpaModel_2
 import torch
 import torch.utils.data as data
+import hpacellseg.cellsegmentator as cellsegmentator
+from hpacellseg.utils import label_cell, label_nuclei
+from pycocotools import _mask as coco_mask
 
 def build_image_names(image_id: str) -> list:
     # mt is the mitchondria
@@ -128,6 +131,7 @@ for sub in sub_dfs:
             continue
 '''
 '''
+AREA = 30000
 def img_splitter(im_tok):
 
     img_red    = np.expand_dims(imageio.imread(os.path.join('data/test',f'{im_tok}_red.png')), axis = -1)
@@ -145,15 +149,13 @@ def img_splitter(im_tok):
         print('img shape ',image.shape)
         print('mask shape ',img_mask.shape)
 
-    if not os.path.exists(f"data/test_h5_224_30000/{im_tok}"):
-                os.mkdir(f"data/test_h5_224_30000/{im_tok}")
-    
+    if not os.path.exists(f"data/test_h5_224_30000_v2/{im_tok}"):
+                os.mkdir(f"data/test_h5_224_30000_v2/{im_tok}")
+    count = 0
     for i in range(1, img_mask.max() + 1):
         bmask = img_mask == i
-
-        token_list.append(im_tok)
-        token_count.append(i)
-        token_enc.append('' + encode_binary_mask(bmask))
+        enc_maskkkkkk = encode_binary_mask(bmask)
+        
 
         bmask = np.expand_dims(bmask, axis = -1)
         bmask = np.concatenate([bmask, bmask, bmask, bmask], axis=-1)
@@ -166,30 +168,41 @@ def img_splitter(im_tok):
         non_zero_count = np.count_nonzero(cropped_arr[:,:,2])
         relative_freq = np.array(non_zero_count/(cropped_arr.shape[0] * cropped_arr.shape[1]))
         #print(relative_freq)
-        cropped_arr = resize(cropped_arr, (224, 224))
+        if cropped_arr.shape[0] * cropped_arr.shape[1] > AREA:
 
-        hdf5_path = os.path.join(f'data/test_h5_224_30000/{im_tok}',f'{im_tok}_{i}.hdf5')
-        hdf5_file = h5py.File(hdf5_path, mode='w')
-        hdf5_file.create_dataset("test_img",cropped_arr.shape,np.float)
-        hdf5_file.create_dataset("protein_rf",relative_freq.shape,np.float)
-        hdf5_file["test_img"][...] = cropped_arr
-        hdf5_file["protein_rf"][...] = relative_freq
-        hdf5_file.close()
+            token_list.append(im_tok)
+            token_count.append(i)
+            token_enc.append('' + enc_maskkkkkk)
 
+
+            count += 1
+            cropped_arr = resize(cropped_arr, (224, 224))
+
+            hdf5_path = os.path.join(f'data/test_h5_224_30000_v2/{im_tok}',f'{im_tok}_{i}.hdf5')
+            hdf5_file = h5py.File(hdf5_path, mode='w')
+            hdf5_file.create_dataset("test_img",cropped_arr.shape,np.float)
+            hdf5_file.create_dataset("protein_rf",relative_freq.shape,np.float)
+            hdf5_file["test_img"][...] = cropped_arr
+            hdf5_file["protein_rf"][...] = relative_freq
+            hdf5_file.close()
+        else:
+            print('not selected')
+    if count ==0:#no cell is detected, we are not sending any spl mask now as we think if a image has no detected mask
+        pass ## this can be taken carte when we mergeteh sample sub csv . 
 img_token_list = sub['ID'].values#[:5]
 
 token_list = []
 token_count = []
 token_enc = []
 
-if not os.path.exists(f"data/test_h5_224_30000"):
-                os.mkdir(f"data/test_h5_224_30000")
+if not os.path.exists(f"data/test_h5_224_30000_v2"):
+                os.mkdir(f"data/test_h5_224_30000_v2")
 
 for i in tqdm(img_token_list):
     img_splitter(i)
 
 test_enc_df = pd.DataFrame.from_dict({'ID': token_list, 'count': token_count, 'encoding': token_enc})
-test_enc_df.to_csv('data/test_enc_v3.csv',index=False)
+test_enc_df.to_csv('data/test_enc_v4.csv',index=False)
 '''
 BATCH_SIZE = 64
 WORKERS = 15
@@ -280,9 +293,9 @@ class hpa_dataset(data.Dataset):
             vv = np.dstack([vv,rf_np])
         return { 'image':vv}
 
-test_enc_df = pd.read_csv('data/test_enc_v3.csv')#[:10]
+test_enc_df = pd.read_csv('data/test_enc_v4.csv')#[:10]
 
-test_dataset = hpa_dataset(main_df = test_enc_df, path = 'data/test_h5_224_30000/')
+test_dataset = hpa_dataset(main_df = test_enc_df, path = 'data/test_h5_224_30000_v2/')
 test_dataloader = data.DataLoader(
         test_dataset,
         batch_size=BATCH_SIZE,
@@ -338,5 +351,5 @@ sub_stage_2_df = pd.DataFrame.from_dict({'ID':token_list,"PredictionString":pred
 sub = pd.read_csv('data/sample_submission.csv')
 sub = sub.drop(['PredictionString'],axis=1)
 sub = sub.merge(sub_stage_2_df, on='ID')
-sub.to_csv(os.path.join(WORK_LOCATION,'submission.csv'), index=False)
+sub.to_csv(os.path.join(WORK_LOCATION,'submission_30000.csv'), index=False)
 #'''
