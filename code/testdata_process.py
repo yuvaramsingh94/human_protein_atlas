@@ -208,7 +208,7 @@ BATCH_SIZE = 64
 WORKERS = 15
 n_classes = 19
 metric_use = 'loss'
-vees = 'v2_3_11_5_3'
+vees = 'v2_3_10_4'
 WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
 
 
@@ -217,26 +217,26 @@ WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
 if not os.path.exists(WORK_LOCATION):
         os.mkdir(WORK_LOCATION)
 
-device = torch.device("cuda:3")
+device = torch.device("cuda:0")
 MODEL_PATH = f'weights/version_{vees}'
 n_classes = 19
 # config_v1.ini
 model_fold_0 = HpaModel(classes = n_classes, device = device, 
-                        base_model_name = 'efficientnet-b4', features = 1792, pretrained = False, init_linear_comb = False)
+                        base_model_name = 'resnest50', features = 2048, pretrained = False, init_linear_comb = False)
 
-model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_1/model_{metric_use}_{0}.pth",map_location = device))
+model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_2/model_{metric_use}_{0}.pth",map_location = device))
 model_fold_0.to(device)
 model_fold_0.eval()
 
 model_fold_1 = HpaModel(classes = n_classes, device = device, 
-                        base_model_name = 'efficientnet-b4', features = 1792, pretrained = False, init_linear_comb = False)
+                        base_model_name = 'resnest50', features = 2048, pretrained = False, init_linear_comb = False)
 
-model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_1/model_{metric_use}_{1}.pth",map_location = device))
+model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_2/model_{metric_use}_{1}.pth",map_location = device))
 model_fold_1.to(device)
 model_fold_1.eval()
 
 model_fold_2 = HpaModel(classes = n_classes, device = device, 
-                        base_model_name = 'efficientnet-b4', features = 1792, pretrained = False, init_linear_comb = False)
+                        base_model_name = 'resnest50', features = 2048, pretrained = False, init_linear_comb = False)
 
 model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_1/model_{metric_use}_{2}.pth",map_location = device))
 model_fold_2.to(device)

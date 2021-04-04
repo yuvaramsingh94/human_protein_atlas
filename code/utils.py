@@ -204,6 +204,11 @@ class hpa_dataset_v1(data.Dataset):
                 #print('train_img ',train_img.shape)
                 train_img = np.concatenate([train_img, zero_arr], axis=0)
                 target_vec[-1] = 1# as we are adding black img . negative = 1 also
+            if self.label_smoothing:
+                #print('sm')
+                if target_vec.sum() == 1:
+                    #print('sum is one ',target_vec)
+                    target_vec[-1] = 1
         #print('this is the shape ', train_img.shape)
         #print("{} seconds".format(end_time-start_time))
         #return {'image' : torch.from_numpy(train_img), 'label' : torch.from_numpy(target_vec)}
