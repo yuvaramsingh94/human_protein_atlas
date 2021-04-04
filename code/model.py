@@ -115,9 +115,9 @@ class HpaSub(nn.Module):
 class HpaModel(nn.Module):
     def __init__(self, classes, device, base_model_name, pretrained, features):
         super(HpaModel, self).__init__()
-
-        mean_list = [0.083170892049318, 0.08627143702844145, 0.05734662013795027, 0.06582942296076659]
-        std_list = [0.13561066140407024, 0.13301454127989584, 0.09142918497144226, 0.15651865713966945]
+        self.base_model_name = base_model_name
+        mean_list = [0.083170892049318, 0.08627143702844145, 0.05734662013795027, 0.06582942296076659,0.0]
+        std_list = [0.13561066140407024, 0.13301454127989584, 0.09142918497144226, 0.15651865713966945,1.]
         self.transform=transforms.Compose([Normalize(mean= mean_list,
                               std= std_list,
                               device = device)])
@@ -130,7 +130,7 @@ class HpaModel(nn.Module):
             print('the list ',list(base_model.children()))
             layers = list(base_model.children())[:-2]
             self.model = nn.Sequential(*layers)
-        self.init_layer = nn.Conv2d(in_channels=4, out_channels=3, kernel_size=1, stride=1)
+        self.init_layer = nn.Conv2d(in_channels=5, out_channels=3, kernel_size=1, stride=1,bias= True)
         self.fc1 = nn.Linear(features, features, bias=True)
         self.att_block = AttBlock(features, classes, activation="linear")
 
@@ -140,7 +140,11 @@ class HpaModel(nn.Module):
         #print('input c_in ',c_in.shape)
         c_in = F.relu(self.init_layer(c_in))
         #print('init layer c_in ',c_in.shape)
-        spe = self.model(c_in)
+        if 'efficientnet' in self.base_model_name:
+            spe = self.model.extract_features(c_in)
+        else:
+            spe = self.model(c_in)
+        spe = F.avg_pool2d(spe, spe.size()[2:]).squeeze()
         #print('enc shape ',spe.shape)
         spe = F.relu(self.fc1(F.dropout(spe.contiguous().view(batch_size, cells, -1), p=0.5, training=self.training))).permute(0,2,1)
         #print('spe shape ',spe.shape)

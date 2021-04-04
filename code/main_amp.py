@@ -1,7 +1,7 @@
 
 import torch
 from utils import set_seed, score_metrics, hpa_dataset_v1, focal_loss
-from model import HpaModel, HpaModel_1, HpaModel_2
+from model import HpaModel#, HpaModel_1, HpaModel_2
 import pandas as pd
 import os
 import numpy as np
@@ -113,19 +113,19 @@ def val_oof(fold, metrics):
         print('using ',config['general']['model'])
         model = HpaModel_1(classes = int(config['general']['classes']), device = device, 
                             base_model_name = config['general']['pretrained_model'], 
-                            features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
+                            features = int(config['general']['feature']), pretrained = True,)
         model = model.to(device)
     elif config['general']['model'] == 'HpaModel':
         print('using ',config['general']['model'])
         model = HpaModel(classes = int(config['general']['classes']), device = device, 
                             base_model_name = config['general']['pretrained_model'], 
-                            features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
+                            features = int(config['general']['feature']), pretrained = True,)
         model = model.to(device)
     elif config['general']['model'] == 'HpaModel_2':
         print('using ',config['general']['model'])
         model = HpaModel_2(classes = int(config['general']['classes']), device = device, 
                             base_model_name = config['general']['pretrained_model'], 
-                            features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
+                            features = int(config['general']['feature']), pretrained = True,)
     
     
     
@@ -294,19 +294,19 @@ def run(fold):
         print('using ',config['general']['model'])
         model = HpaModel_1(classes = int(config['general']['classes']), device = device, 
                             base_model_name = config['general']['pretrained_model'], 
-                            features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
+                            features = int(config['general']['feature']), pretrained = True,)
         model = model.to(device)
     elif config['general']['model'] == 'HpaModel':
         print('using ',config['general']['model'])
         model = HpaModel(classes = int(config['general']['classes']), device = device, 
                             base_model_name = config['general']['pretrained_model'], 
-                            features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
+                            features = int(config['general']['feature']), pretrained = True,)
         model = model.to(device)
     elif config['general']['model'] == 'HpaModel_2':
         print('using ',config['general']['model'])
         model = HpaModel_2(classes = int(config['general']['classes']), device = device, 
                             base_model_name = config['general']['pretrained_model'], 
-                            features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
+                            features = int(config['general']['feature']), pretrained = True,)
         model = model.to(device)
     # Optimizer
     #optimizer = optim.AdamW(model.parameters(), lr= LR)
