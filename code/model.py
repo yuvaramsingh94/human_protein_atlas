@@ -149,5 +149,5 @@ class HpaModel(nn.Module):
         spe = F.relu(self.fc1(F.dropout(spe.contiguous().view(batch_size, cells, -1), p=0.5, training=self.training))).permute(0,2,1)
         #print('spe shape ',spe.shape)
         final_output, norm_att, cell_pred = self.att_block(F.dropout(spe, p=0.5, training=self.training))
-
+        cell_pred = torch.sigmoid(cell_pred)
         return {'final_output':final_output, 'cell_pred':cell_pred}
