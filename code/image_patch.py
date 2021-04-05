@@ -23,7 +23,10 @@ def img_splitter(im_tok):
     image = np.concatenate([img_red, img_yellow, img_green, img_blue], axis=-1)
 
     img_resize = cv2.resize(image, (SIZE, SIZE))
-    hdf5_path = os.path.join(f"data/train_h5_irn_{SIZE}_{version}/{im_tok}",f'{im_tok}.hdf5')
+        
+    #if not os.path.exists(f"data/train_h5_irn_{SIZE}_{version}/{im_tok}"):
+    #        os.mkdir(f"data/train_h5_irn_{SIZE}_{version}/{im_tok}")
+    hdf5_path = os.path.join(f"data/train_h5_irn_{SIZE}_{version}/",f'{im_tok}.hdf5')
     hdf5_file = h5py.File(hdf5_path, mode='w')
     hdf5_file.create_dataset("train_img",img_resize.shape,np.uint8)
     hdf5_file["train_img"][...] = img_resize
