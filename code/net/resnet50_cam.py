@@ -17,22 +17,22 @@ class Net(nn.Module):
         self.stage3 = nn.Sequential(self.resnet50.layer3)
         self.stage4 = nn.Sequential(self.resnet50.layer4)
 
-        self.classifier = nn.Conv2d(2048, 20, 1, bias=False)
-
+        self.classifier = nn.Conv2d(2048, 19, 1, bias=False)
+        self.init_layer = nn.Conv2d(in_channels=4, out_channels=3, kernel_size=1, stride=1,bias= True)
         self.backbone = nn.ModuleList([self.stage1, self.stage2, self.stage3, self.stage4])
-        self.newly_added = nn.ModuleList([self.classifier])
+        self.newly_added = nn.ModuleList([self.init_layer, self.classifier])
 
     def forward(self, x):
-
+        x = F.relu(self.init_layer(x))
         x = self.stage1(x)
-        x = self.stage2(x).detach()
+        x = self.stage2(x)#.detach()
 
         x = self.stage3(x)
         x = self.stage4(x)
 
         x = torchutils.gap2d(x, keepdims=True)
         x = self.classifier(x)
-        x = x.view(-1, 20)
+        x = x.view(-1, 19)
 
         return x
 

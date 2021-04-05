@@ -3,11 +3,15 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import importlib
 from misc import pyutils, torchutils
+import torch.utils.data as data
+import pandas as pd
+import os
+import numpy as np
+import h5py
 
 
 class hpa_dataset(data.Dataset):
-    class hpa_dataset_v1(data.Dataset):
-    def __init__(self, main_df, augmentation = None, path=None,  aug_per = 0.0, cells_used = 8, label_smoothing = False, l_alp = 0.3, is_validation = False):
+    def __init__(self, main_df, augmentation = None, path=None,is_validation = False):
         self.main_df = main_df
         self.label_col = [str(i) for i in range(19)]
         self.path = path
@@ -18,7 +22,7 @@ class hpa_dataset(data.Dataset):
     def __getitem__(self, idx):
         info = self.main_df.iloc[idx]
         ids = info["ID"]
-        hdf5_path = os.path.join(self.path,ids,f'{ids}.hdf5')
+        hdf5_path = os.path.join(self.path,f'{ids}.hdf5')
         target_vec = info[self.label_col].values.astype(np.int)
 
         if not self.is_validation:
@@ -40,9 +44,9 @@ def validate(model, data_loader,device):
 
     with torch.no_grad():
         for pack in data_loader:
-            img = pack['img'].to(device,non_blocking=True)
+            img = pack['image'].permute(0,3,1,2).to(device).float()
 
-            label = pack['label'].to(device,non_blocking=True)
+            label = pack['label'].to(device)
 
             x = model(img)
             loss1 = F.multilabel_soft_margin_loss(x, label)
@@ -61,17 +65,19 @@ def run(args):
     model = getattr(importlib.import_module(args.cam_network), 'Net')()
     device = torch.device("cuda:0")
 
-    train_dataset = voc12.dataloader.VOC12ClassificationDataset(args.train_list, voc12_root=args.voc12_root,
-                                                                resize_long=(320, 640), hor_flip=True,
-                                                                crop_size=512, crop_method="random")
+    train_base_df = pd.read_csv('data/train_fold_v6.csv')
+    fold = 0
+    train_df = train_base_df[train_base_df['fold'] != fold]
+    valid_df = train_base_df[train_base_df['fold'] == fold]
+    PATH = 'data/train_h5_irn_512_v1'
+    train_dataset = hpa_dataset(main_df = train_df, path=PATH, is_validation = False)
     train_data_loader = DataLoader(train_dataset, batch_size=args.cam_batch_size,
-                                   shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
+                                   shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=False)
     max_step = (len(train_dataset) // args.cam_batch_size) * args.cam_num_epoches
 
-    val_dataset = voc12.dataloader.VOC12ClassificationDataset(args.val_list, voc12_root=args.voc12_root,
-                                                              crop_size=512)
+    val_dataset = hpa_dataset(main_df = valid_df, path=PATH, is_validation = True)
     val_data_loader = DataLoader(val_dataset, batch_size=args.cam_batch_size,
-                                 shuffle=False, num_workers=args.num_workers, pin_memory=True, drop_last=True)
+                                   shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=False)
 
     param_groups = model.trainable_parameters()
     optimizer = torchutils.PolyOptimizer([
@@ -92,8 +98,8 @@ def run(args):
 
         for step, pack in enumerate(train_data_loader):
 
-            img = pack['img'].to(device,non_blocking=True)
-            label = pack['label'].to(device,non_blocking=True)
+            img = pack['image'].permute(0,3,1,2).to(device).float()
+            label = pack['label'].to(device)
 
             x = model(img)
             loss = F.multilabel_soft_margin_loss(x, label)
