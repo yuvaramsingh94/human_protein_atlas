@@ -208,7 +208,7 @@ BATCH_SIZE = 64
 WORKERS = 15
 n_classes = 19
 metric_use = 'loss'
-vees = 'v6'
+vees = 'v6_1'
 WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
 
 
@@ -217,7 +217,7 @@ WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
 if not os.path.exists(WORK_LOCATION):
         os.mkdir(WORK_LOCATION)
 
-device = torch.device("cuda:0")
+device = torch.device("cuda:2")
 MODEL_PATH = f'weights/version_{vees}'
 n_classes = 19
 # config_v1.ini
