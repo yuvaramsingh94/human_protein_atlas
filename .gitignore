@@ -7,3 +7,4 @@
 *.pth
 *.jpg
 log_dir/
+*.npy
