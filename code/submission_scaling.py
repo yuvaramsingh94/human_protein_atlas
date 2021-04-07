@@ -2,16 +2,23 @@ import numpy as np
 import pandas as pd
 import os
 metric_use = 'loss'
-vees = 'v2_3_11'
 n_classes = 19
-WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
+WORK_LOCATION = f'data/submissions/test_ensamble_2/'
+
+if not os.path.exists(WORK_LOCATION):
+        os.mkdir(WORK_LOCATION)
+
 SCALING = 2.
 
-WORK_LOCATION = f'data/submissions/test_{"v2_3_8"}_{metric_use}/'
+WORK_LOCATION = f'data/submissions/test_{"v6_2"}_{metric_use}/'
 test_enc_df = pd.read_csv(os.path.join(WORK_LOCATION,'stage_1.csv'))
-WORK_LOCATION = f'data/submissions/test_{"v2_3_11"}_{metric_use}/'   #effb0 one
+WORK_LOCATION = f'data/submissions/test_{"v6"}_{metric_use}/'   #effb0 one
+test_enc_df_1 = pd.read_csv(os.path.join(WORK_LOCATION,'stage_1.csv'))
+WORK_LOCATION = f'data/submissions/test_{"v2_3_10_1"}_{metric_use}/'   #effb0 one
 test_enc_df_2 = pd.read_csv(os.path.join(WORK_LOCATION,'stage_1.csv'))
 
+
+WORK_LOCATION = f'data/submissions/test_ensamble_2/'
 
 #print(test_enc_df.head())
 
@@ -27,16 +34,16 @@ test_enc_df_2 = pd.read_csv(os.path.join(WORK_LOCATION,'stage_1.csv'))
 #test_enc_df['11'] = np.clip(test_enc_df['11'].values * SCALING, 0.0, 1.0)
 
 
-print('After scaling ')
+#print('After scaling ')
 
-print(test_enc_df.head())
+#print(test_enc_df.head())
 
 #we will see how the ensamble will work
-predictions = test_enc_df[[str(i) for i in range(n_classes)]].values + test_enc_df_2[[str(i) for i in range(n_classes)]].values
-test_enc_df[[str(i) for i in range(n_classes)]] = predictions/2.
+predictions = test_enc_df[[str(i) for i in range(n_classes)]].values + test_enc_df_1[[str(i) for i in range(n_classes)]].values + test_enc_df_2[[str(i) for i in range(n_classes)]].values
+test_enc_df[[str(i) for i in range(n_classes)]] = predictions/3.
 
-test_enc_df['0'] = np.clip(test_enc_df['0'].values * SCALING, 0.0, 1.0)
-test_enc_df['16'] = np.clip(test_enc_df['16'].values * SCALING, 0.0, 1.0)
+#test_enc_df['0'] = np.clip(test_enc_df['0'].values * SCALING, 0.0, 1.0)
+#test_enc_df['16'] = np.clip(test_enc_df['16'].values * SCALING, 0.0, 1.0)
 
 tokens_list = test_enc_df.ID.unique()
 
