@@ -45,6 +45,8 @@ class Net(nn.Module):
     def trainable_parameters(self):
 
         return (list(self.backbone.parameters()), list(self.newly_added.parameters()))
+    #def load_wt(self,):
+    #    pass
 
 
 class CAM(Net):
@@ -53,7 +55,8 @@ class CAM(Net):
         super(CAM, self).__init__()
 
     def forward(self, x):
-
+        #print('x ',x.max())
+        x = F.relu(self.init_layer(x))
         x = self.stage1(x)
 
         x = self.stage2(x)
@@ -64,7 +67,7 @@ class CAM(Net):
 
         x = F.conv2d(x, self.classifier.weight)
         x = F.relu(x)
-
+        #print('this is x ',x.shape)
         x = x[0] + x[1].flip(-1)
 
         return x

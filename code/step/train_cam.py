@@ -102,6 +102,7 @@ def run(args):
             label = pack['label'].to(device)
 
             x = model(img)
+            #print('vi ',x.shape)
             loss = F.multilabel_soft_margin_loss(x, label)
 
             avg_meter.add({'loss1': loss.item()})

@@ -7,11 +7,13 @@ from torch.backends import cudnn
 import numpy as np
 import importlib
 import os
-
-import voc12.dataloader
 from misc import torchutils, imutils
+import torch.utils.data as data
+import pandas as pd
+import os
+import numpy as np
+import h5py
 
-cudnn.enabled = True
 
 class hpa_dataset(data.Dataset):
     def __init__(self, main_df, augmentation = None, path=None,is_validation = False):
@@ -36,8 +38,48 @@ class hpa_dataset(data.Dataset):
             with h5py.File(hdf5_path,"r") as h:
                 vv = h['train_img'][...]
                 vv = vv/255.
-        return {'image' : vv, 'label' : target_vec}
+        return {'image' : vv, 'label' : target_vec, 'name': ids, "size": (vv.shape[0], vv.shape[1])}
+        #"size": (img.shape[0], img.shape[1]), "label": torch.from_numpy(self.label_list[idx])}
 
+class hpa_dataset_cam(data.Dataset):
+
+    def __init__(self, main_df,  path=None, scales=(1.0,)):
+        self.main_df = main_df
+        self.label_col = [str(i) for i in range(19)]
+        self.path = path
+        self.scales = scales
+    def __len__(self):
+        return len(self.main_df)
+
+    def __getitem__(self, idx):
+        info = self.main_df.iloc[idx]
+        ids = info["ID"]
+        hdf5_path = os.path.join(self.path,f'{ids}.hdf5')
+        target_vec = info[self.label_col].values.astype(np.int)
+        with h5py.File(hdf5_path,"r") as h:
+            img = h['train_img'][...]
+        #name = self.img_name_list[idx]
+        #name_str = decode_int_filename(name)
+
+        #img = imageio.imread(get_img_path(name_str, self.voc12_root))
+
+        ms_img_list = []
+        for s in self.scales:
+            if s == 1:
+                s_img = img
+            else:
+                s_img = imutils.pil_rescale(img, s, order=3)
+                #print('this is image mi max ',s_img.min(),s_img.max(),s_img.shape)
+            #s_img = self.img_normal(s_img)
+            #s_img = imutils.HWC_to_CHW(s_img)
+            ms_img_list.append(np.stack([s_img, np.flip(s_img, -1)], axis=0))
+        if len(self.scales) == 1:
+            ms_img_list = ms_img_list[0]
+        #v = np.array(ms_img_list)
+        #print('this is image mi max ',v.min(),v.max(),v.shape)
+        out = {"name": ids, "img": ms_img_list, "size": (img.shape[0], img.shape[1]),
+               "label": target_vec}
+        return out
 
 
 def _work(process_id, model, dataset, args):
@@ -58,8 +100,9 @@ def _work(process_id, model, dataset, args):
 
             strided_size = imutils.get_strided_size(size, 4)
             strided_up_size = imutils.get_strided_up_size(size, 16)
-
-            outputs = [model(img[0].cuda(non_blocking=True))
+            #print('len ',len(pack['img']))
+            #print('shape ',pack['img'][0][0].min(),pack['img'][0][0].max())
+            outputs = [model(img[0].permute(0,3,1,2).cuda().float()/255.)
                        for img in pack['img']]
 
             strided_cam = torch.sum(torch.stack(
@@ -99,12 +142,12 @@ def run(args):
     train_df = train_base_df[train_base_df['fold'] != fold]
     valid_df = train_base_df[train_base_df['fold'] == fold]
     PATH = 'data/train_h5_irn_512_v1'
-    dataset = hpa_dataset(main_df = train_df, path=PATH, is_validation = False)
-    
+    dataset = hpa_dataset_cam(main_df = train_df, path=PATH, scales=args.cam_scales)
+    print('this is bbb')
     dataset = torchutils.split_dataset(dataset, n_gpus)
 
     print('[ ', end='')
     multiprocessing.spawn(_work, nprocs=n_gpus, args=(model, dataset, args), join=True)
     print(']')
 
-    torch.cuda.empty_cache()
+    #torch.cuda.empty_cache()
