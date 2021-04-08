@@ -10,3 +10,4 @@ log_dir/
 *.zip
 *.npy
 *.log
+log_dir_st2/
