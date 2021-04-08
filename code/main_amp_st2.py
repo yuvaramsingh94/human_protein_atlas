@@ -244,8 +244,8 @@ def run(fold):
                             base_model_name = config['general']['pretrained_model'], 
                             features = int(config['general']['feature']), pretrained = True,)
         print('THis is path ')
-        print(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{str(config['general'][f'fold_{fold}_seed'])}/model_loss_{fold}.pth")
-        model.load_state_dict(torch.load(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{str(config['general'][f'fold_{fold}_seed'])}/model_loss_{fold}.pth",map_location = device))
+        print(f"weights/{WEIGHT_LOAD}/fold_{fold}_seed_{str(config['general'][f'fold_{fold}_seed'])}/model_loss_{fold}.pth")
+        model.load_state_dict(torch.load(f"weights/{WEIGHT_LOAD}/fold_{fold}_seed_{str(config['general'][f'fold_{fold}_seed'])}/model_loss_{fold}.pth",map_location = device))
         #lets try to learn this from initialization
         model.init_attention_layer()
         model = model.to(device)
@@ -342,6 +342,7 @@ if __name__ == "__main__":
     WORKERS = int(config['general']['workers'])
     EPOCH = int(config['general']['epoch'])
     WEIGHT_SAVE = config['general']['weight_save_version']
+    WEIGHT_LOAD = config['general']['weight_load_version']
     LR = float(config['general']['lr'])
     cells_used = int(config['general']['cells_used'])
     print('LR ',LR, type(LR))
