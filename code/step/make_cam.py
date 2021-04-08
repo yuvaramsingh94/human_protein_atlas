@@ -139,8 +139,8 @@ def run(args):
 
     train_base_df = pd.read_csv('data/train_fold_v6.csv')
     fold = 0
-    train_df = train_base_df[train_base_df['fold'] != fold]
-    valid_df = train_base_df[train_base_df['fold'] == fold]
+    train_df = train_base_df#[train_base_df['fold'] != fold]
+    valid_df = train_base_df[train_base_df['fold'] == fold][:100]
     PATH = 'data/train_h5_irn_512_v1'
     dataset = hpa_dataset_cam(main_df = train_df, path=PATH, scales=args.cam_scales)
     print('this is bbb')

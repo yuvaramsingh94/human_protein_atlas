@@ -84,7 +84,7 @@ if __name__ == '__main__':
     #'''
     #python code/run_sample.py --num_workers 1 --cam_learning_rate 0.001
     #python code/run_sample.py --num_workers 10 --cam_learning_rate 0.001 --irn_batch_size 16
-    #python code/run_sample.py --num_workers 10 --cam_learning_rate 0.001 --irn_batch_size 16 --irn_num_epoches 1
+    #python code/run_sample.py --num_workers 10 --cam_learning_rate 0.001 --cam_num_epoches 3 --irn_batch_size 16 --irn_num_epoches 3 --irn_learning_rate 0.001
     
     if args.train_cam_pass is True:
         import step.train_cam
