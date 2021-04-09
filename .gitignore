@@ -9,3 +9,4 @@ log_dir/
 *.jpg
 *.zip
 *.npy
+log_dir_st2/
