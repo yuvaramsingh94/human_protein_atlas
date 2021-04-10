@@ -1,6 +1,6 @@
 
 import torch
-from utils import set_seed, score_metrics, hpa_dataset_v2, focal_loss
+from utils import set_seed, score_metrics, hpa_dataset_v2, focal_loss, hpa_dataset_v3
 from model import HpaModel#, HpaModel_1, HpaModel_2
 import pandas as pd
 import os
@@ -176,10 +176,10 @@ def run(fold):
 
     print(f'Train df {train_df.shape} valid df {valid_df.shape}')
 
-    train_dataset = hpa_dataset_v2(main_df = train_df, path = DATA_PATH, augmentation = aug_fn, aug_per= 0.8, 
+    train_dataset = hpa_dataset_v3(main_df = train_df, axe_df = axe_df, path = DATA_PATH, augmentation = aug_fn, aug_per= 0.8, 
                                     cells_used = cells_used,label_smoothing = config.getboolean('general','label_smoothing'),
                                      l_alp = 0.3)
-    valid_dataset = hpa_dataset_v2(main_df = valid_df, path = DATA_PATH, cells_used = cells_used, is_validation = True)
+    valid_dataset = hpa_dataset_v3(main_df = valid_df, axe_df = axe_df, path = DATA_PATH, cells_used = cells_used, is_validation = True)
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}/st_fold_{fold}_seed_{SEED}"):
         os.mkdir(f"weights/{WEIGHT_SAVE}/st_fold_{fold}_seed_{SEED}")
@@ -348,6 +348,7 @@ if __name__ == "__main__":
     print('LR ',LR, type(LR))
     print('init_linear_comb', config.getboolean('general','init_linear_comb'), type(config.getboolean('general','init_linear_comb')))
     train_base_df = pd.read_csv(config['general']['data_csv'])
+    axe_df = pd.read_csv(config['general']['axe_csv'])
     #train_base_df = pd.read_csv('data/train_fold_v1.csv')
 
     
