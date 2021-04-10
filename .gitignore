@@ -10,3 +10,4 @@ log_dir/
 *.zip
 *.npy
 log_dir_st2/
+*.tsv
