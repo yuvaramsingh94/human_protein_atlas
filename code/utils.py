@@ -441,14 +441,18 @@ class hpa_dataset_v3(data.Dataset):
                 #if its multilabel
                 #there is still a problem with thos approach . with replace True . lower samples gets repeated
                 if target_vec.sum() > 1:
-                    print('filtered')
-                    count_list = axe_df[axe_df['ID'].isin([ids])].groupby('cluster').apply(lambda x: x.sample(5,replace=True))['count'].values
+                    #print('filtered')
+                    count_list = self.axe_df[self.axe_df['ID'].isin([ids])].groupby('cluster').apply(lambda x: x.sample(self.cells_used,replace=True))['count'].values
+                    #print(count_list)
+                    random.shuffle(count_list) 
+                    count_list = count_list[:self.cells_used] 
                 else:
                     count_list = [i for i in range(1, self.cells_used + 1)]
-                    random.shuffle(count_list)                    
+                    random.shuffle(count_list) 
+                    count_list = count_list[:self.cells_used]                 
 
-                print(count_list)
                 
+                #print(len(count_list))
                 cell_list = []
                 for i in count_list:
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
