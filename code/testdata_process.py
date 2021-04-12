@@ -208,7 +208,7 @@ BATCH_SIZE = 64
 WORKERS = 15
 n_classes = 19
 metric_use = 'loss'
-vees = 'v6_2_1'
+vees = 'v6_2_2'
 WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
 
 if not os.path.exists(WORK_LOCATION):
@@ -228,14 +228,14 @@ model_fold_0.eval()
 model_fold_1 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'resnest50', features = 2048, pretrained = False)
 
-model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/st_fold_{1}_seed_2/model_st_{metric_use}_{1}.pth",map_location = device))
+model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/st_fold_{1}_seed_1/model_st_{metric_use}_{1}.pth",map_location = device))
 model_fold_1.to(device)
 model_fold_1.eval()
 
 model_fold_2 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'resnest50', features = 2048, pretrained = False)
 
-model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/st_fold_{2}_seed_1/model_st_{metric_use}_{2}.pth",map_location = device))
+model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/st_fold_{2}_seed_2/model_st_{metric_use}_{2}.pth",map_location = device))
 model_fold_2.to(device)
 model_fold_2.eval()
 
