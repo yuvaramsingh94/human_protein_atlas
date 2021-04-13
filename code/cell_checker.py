@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 train_df = pd.read_csv('data/train.csv')
 print(train_df.shape)
+AREA = 40000
 
 def img_splitter(im_tok):
     #img_filename = img_token+'.png'
@@ -41,7 +42,7 @@ def img_splitter(im_tok):
         cropped_arr = masked_img[top_left[0]:bottom_right[0]+1,top_left[1]:bottom_right[1]+1]
         #print(cropped_arr.shape)
         #print('Area: ',cropped_arr.shape[0] * cropped_arr.shape[1])
-        if cropped_arr.shape[0] * cropped_arr.shape[1] > 100000:
+        if cropped_arr.shape[0] * cropped_arr.shape[1] > AREA:
             selected_cell_count += 1
             #print(cropped_arr.min(), cropped_arr.max())
             cropped_arr = resize(cropped_arr, (224, 224))
@@ -65,10 +66,11 @@ img_token_list = train_df['ID'].values
 for i in  tqdm(img_token_list):
     crop_img_list = img_splitter(i)
     
-v = {'token':file_name,'total_cell_mask':total_cell_mask,'selected_cells':selected_cells}
+v = {'ID':file_name,'total_cell_mask':total_cell_mask,'selected_cells':selected_cells}
 v_df = pd.DataFrame.from_dict(v)
-v_df.to_csv('data/cell_mask_study_v3.csv')
+v_df.to_csv('data/cell_mask_study_v5.csv', index = False)
 
 #v1 = 30000
 #v2 = 70000
 #v3 = 100000
+#v5 = 40000

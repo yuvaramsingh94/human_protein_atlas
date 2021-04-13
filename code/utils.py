@@ -50,7 +50,7 @@ class Normalize:
         return tensor
 
 class hpa_dataset_v1(data.Dataset):
-    def __init__(self, main_df, augmentation = None, path=None,  aug_per = 0.0, cells_used = 8, label_smoothing = False, l_alp = 0.3, is_validation = False):
+    def __init__(self, main_df, augmentation = None, path=None,  aug_per = 0.0, cells_used = 8, label_smoothing = False, l_alp = 0.3, is_validation = False, size = 224):
         self.main_df = main_df
         self.aug_percent = aug_per
         self.augmentation = augmentation
@@ -58,6 +58,7 @@ class hpa_dataset_v1(data.Dataset):
         self.label_col = [str(i) for i in range(19)]
         self.cells_used = cells_used
         self.path = path
+        self.size = size
         self.is_validation = is_validation
         self.label_smoothing = label_smoothing
         self.l_alp = l_alp
@@ -90,7 +91,7 @@ class hpa_dataset_v1(data.Dataset):
                             vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
                         vv = np.dstack([vv,rf_np])
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
@@ -110,7 +111,7 @@ class hpa_dataset_v1(data.Dataset):
                             vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
                         vv = np.dstack([vv,rf_np])
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
@@ -129,12 +130,12 @@ class hpa_dataset_v1(data.Dataset):
                             vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
                         vv = np.dstack([vv,rf_np])
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
                 train_img = np.array(cell_list)
-                shape = (self.cells_used - cell_count + 1, 224, 224, 5)
+                shape = (self.cells_used - cell_count + 1, self.size, self.size, 5)
                 zero_arr = np.zeros(shape, dtype=float)
                 ##print('zero_arr ',zero_arr.shape)
                 ##print('train_img ',train_img.shape)
@@ -161,7 +162,7 @@ class hpa_dataset_v1(data.Dataset):
                         vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
                         vv = np.dstack([vv,rf_np])
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
@@ -177,7 +178,7 @@ class hpa_dataset_v1(data.Dataset):
                         vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
                         vv = np.dstack([vv,rf_np])
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
@@ -193,12 +194,12 @@ class hpa_dataset_v1(data.Dataset):
                         vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
                         vv = np.dstack([vv,rf_np])
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
                 train_img = np.array(cell_list)
-                shape = (self.cells_used - cell_count + 1, 224, 224, 5)
+                shape = (self.cells_used - cell_count + 1, self.size, self.size, 5)
                 zero_arr = np.zeros(shape, dtype=float)
                 ##print('zero_arr ',zero_arr.shape)
                 #print('train_img ',train_img.shape)
