@@ -71,7 +71,7 @@ def img_splitter(im_tok):
             crop_img_list.append(cropped_arr)
 
 
-img_token_list = train_df['ID'].values
+img_token_list = ['1891_N5_28']#train_df['ID'].values
 
 #for i in  img_token_list[:3]:
     #print(i)

@@ -57,7 +57,7 @@ def encode_binary_mask(mask: np.ndarray) -> t.Text:
   base64_str = base64.b64encode(binary_str)
   return base64_str.decode()#('ascii')
 
-sub = pd.read_csv('data/train_ext/extra_data.csv')
+sub = pd.read_csv('data/train_ext/extra_cutdown_data_part2.csv')
 
 import hpacellseg.cellsegmentator as cellsegmentator
 from hpacellseg.utils import label_cell, label_nuclei
@@ -70,7 +70,7 @@ segmentator = cellsegmentator.CellSegmentator(
     NUC_MODEL,
     CELL_MODEL,
     scale_factor=0.25,
-    device='cuda:2',
+    device='cuda:0',
     padding=True,
     multi_channel_model=True
 )
