@@ -33,32 +33,47 @@ parser.add_argument('cuda', metavar='N', type=int, nargs='+',
 parser.add_argument('config_file', metavar='N', type=str, nargs='+',
                     help='configuration file path')
 
+def output_fn(p):
+    p.export_chrome_trace('chrome_prof.json')
 
 def train(model,train_dataloader,optimizer,criterion):
     model.train()
     #print('model.training = ',model.training)
     train_loss_loop_list = []
-    for data_t in tqdm(train_dataloader):
-        X, Y = data_t['image'],data_t['label']
-        X = X.to(device, dtype=torch.float)
-        Y = Y.to(device, dtype=torch.float)
-        X = X.permute(0,1,4,2,3)
-        #print(X[:,:,:4,:,:].min(), X.max())
-        
-        optimizer.zero_grad()
-        with torch.cuda.amp.autocast():
-            prediction = model(X)
-            train_loss = criterion(prediction['final_output'], Y) 
-        
-        scaler.scale(train_loss).backward()
-        
-        scaler.step(optimizer)
-        scaler.update()
+    #pip install torch_tb_profiler
+    with torch.profiler.profile(
+        #activities=[
+        #torch.profiler.ProfilerActivity.CPU,
+        #torch.profiler.ProfilerActivity.CUDA],
+        schedule=torch.profiler.schedule(
+            wait=2,
+            warmup=2,
+            active=6,
+            repeat=1),
+        on_trace_ready=output_fn,#torch.profiler.tensorboard_trace_handler('profiler', worker_name=None),#output_fn,#
+    ) as profiler:
+        for data_t in tqdm(train_dataloader):
+            X, Y = data_t['image'],data_t['label']
+            X = X.to(device, dtype=torch.float)
+            Y = Y.to(device, dtype=torch.float)
+            X = X.permute(0,1,4,2,3)
+            #print(X[:,:,:4,:,:].min(), X.max())
+            
+            optimizer.zero_grad()
+            with torch.cuda.amp.autocast():
+                prediction = model(X)
+                train_loss = criterion(prediction['final_output'], Y) 
+            
+            scaler.scale(train_loss).backward()
+            
+            scaler.step(optimizer)
+            scaler.update()
+            profiler.step()
 
-        #train_loss.backward()
-        #optimizer.step()
-        #print(model.init_layer.weight)
-        train_loss_loop_list.append(train_loss.item())
+            #train_loss.backward()
+            #optimizer.step()
+            #print(model.init_layer.weight)
+            train_loss_loop_list.append(train_loss.item())
 
     train_total_loss = np.array(train_loss_loop_list)
     train_total_loss = train_total_loss.sum() / len(train_total_loss)

@@ -99,12 +99,12 @@ class hpa_dataset_v1(data.Dataset):
                         
             elif cell_count > self.cells_used:#random downsample
 
-                rand_idx = [i for i in range(0,cell_count)]
+                rand_idx = [i for i in range(1,cell_count)]
                 #print('random idx ', rand_idx)
                 random.shuffle(rand_idx)
-                print('random idx ', rand_idx)
+                #print('random idx ', rand_idx, self.cells_used)
                 cell_list = []
-                for i in range(rand_idx[:self.cells_used + 1]):
+                for i in rand_idx[:self.cells_used ]:
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
