@@ -20,6 +20,8 @@ import random
 # https://github.com/albumentations-team/albumentations/blob/master/albumentations/augmentations/transforms.py
 import albumentations as albu
 from augmix import RandomAugMix
+from torch.backends import cudnn
+cudnn.benchmarks = True
 
 
 
@@ -313,6 +315,7 @@ def run(fold):
     #param_groups = model.trainable_parameters()
     #optimizer0 = optim.AdamW(param_groups[0], lr= 1e-5)
     #optimizer1 = optim.AdamW(param_groups[1], lr= LR)
+    #https://github.com/pytorch/pytorch/tree/master/torch/optim/_multi_tensor
     optimizer = optim.AdamW(model.parameters(), lr= LR)
     
 
@@ -366,7 +369,7 @@ def run(fold):
             improvement_tracker += 1
         print('improvement_tracker ',improvement_tracker)
         #early stoping
-        if improvement_tracker > 6:# if we are not improving for more than 6 
+        if improvement_tracker > 5:# if we are not improving for more than 6 
             break
 
     ### now we do the master check once . it should be slow so we do it once
@@ -417,7 +420,7 @@ if __name__ == "__main__":
             albu.OneOf([
                 albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, border_mode = 1),
                 albu.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, border_mode=1),
-                albu.GridDistortion(num_steps=5, distort_limit=0.3, interpolation=1, border_mode=1),
+                albu.GridDistortion(num_steps=3, distort_limit=0.4, interpolation=1, border_mode=1),#num_steps=5, distort_limit=0.3
             ], p=.7),
             
             

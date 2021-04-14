@@ -20,6 +20,8 @@ import random
 # https://github.com/albumentations-team/albumentations/blob/master/albumentations/augmentations/transforms.py
 import albumentations as albu
 from augmix import RandomAugMix
+from torch.backends import cudnn
+cudnn.benchmarks = True
 
 
 

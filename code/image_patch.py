@@ -24,52 +24,63 @@ def img_splitter(im_tok):
     img_blue   = np.expand_dims(imageio.imread(os.path.join('data/train',f'{im_tok}_blue.png')), axis = -1)
     image = np.concatenate([img_red, img_yellow, img_green, img_blue], axis=-1)
     img_mask = np.load(os.path.join('data/hpa_cell_mask',f'{im_tok}.npz'))['arr_0'].astype(np.uint8)
+    img_nu_mask = np.load(os.path.join('data/hpa_nuclei_mask',f'{im_tok}.npz'))['arr_0'].astype(np.uint8)
     #print(image.shape,img_mask.shape)
     #area_list = []
     crop_img_list = []
     count = 0
     for i in range(1, img_mask.max() + 1):
         bmask = img_mask == i
-        bmask = np.expand_dims(bmask, axis = -1)
-        bmask = np.concatenate([bmask, bmask, bmask, bmask], axis=-1)
-        masked_img = image * bmask
+        masked_nuclieus = img_nu_mask * bmask
 
-        true_points = np.argwhere(bmask)
-        top_left = true_points.min(axis=0)
-        bottom_right = true_points.max(axis=0)
-        cropped_arr = masked_img[top_left[0]:bottom_right[0]+1,top_left[1]:bottom_right[1]+1]
-        #print(cropped_arr.shape)
-        #print('Area: ',cropped_arr.shape[0] * cropped_arr.shape[1])
-        if cropped_arr.shape[0] * cropped_arr.shape[1] > AREA:
-            count += 1
+        true_nu_points = np.argwhere(masked_nuclieus)
+        try:
+            top_nu_left = true_nu_points.min(axis=0)
+            bottom_nu_right = true_nu_points.max(axis=0)
 
-            #lets calcualte teh green channel stats
-            non_zero_count = np.count_nonzero(cropped_arr[:,:,2])
-            relative_freq = np.array(non_zero_count/(cropped_arr.shape[0] * cropped_arr.shape[1]))
-            #print('relative freq ', relative_freq)
-            actual_h = cropped_arr.shape[0]
-            actual_w = cropped_arr.shape[1]
-            cropped_arr = cv2.resize(cropped_arr, (256, 256))
-            #print('after resize ',cropped_arr.min(),cropped_arr.max())
-            if not os.path.exists(f"data/train_h5_256_{AREA}_{version}/{im_tok}"):
-                os.mkdir(f"data/train_h5_256_{AREA}_{version}/{im_tok}")
+            bmask = np.expand_dims(bmask, axis = -1)
+            bmask = np.concatenate([bmask, bmask, bmask, bmask], axis=-1)
+            masked_img = image * bmask
 
-            hdf5_path = os.path.join(f"data/train_h5_256_{AREA}_{version}/{im_tok}",f'{im_tok}_{count}.hdf5')
-            hdf5_file = h5py.File(hdf5_path, mode='w')
-            hdf5_file.create_dataset("train_img",cropped_arr.shape,np.uint8)
-            hdf5_file.create_dataset("protein_rf",relative_freq.shape,np.float)
-            #hdf5_file.create_dataset("actual_h",relative_freq.shape,np.int)
-            #hdf5_file.create_dataset("actual_w",relative_freq.shape,np.int)
-            hdf5_file["train_img"][...] = cropped_arr
-            hdf5_file["protein_rf"][...] = relative_freq
-            #hdf5_file["actual_h"][...] = actual_h
-            #hdf5_file["actual_w"][...] = actual_w
-            hdf5_file.close()
-            
+            true_points = np.argwhere(bmask)
+            top_left = true_points.min(axis=0)
+            bottom_right = true_points.max(axis=0)
+            cropped_arr = masked_img[top_left[0]:bottom_right[0]+1,top_left[1]:bottom_right[1]+1]
+            #print(cropped_arr.shape)
+            #print('Area: ',cropped_arr.shape[0] * cropped_arr.shape[1])
+            if cropped_arr.shape[0] * cropped_arr.shape[1] > AREA:
+                count += 1
 
-            #area_list.append(cropped_arr.shape[0] * cropped_arr.shape[1]
-            crop_img_list.append(cropped_arr)
+                #lets calcualte teh green channel stats
+                non_zero_count = np.count_nonzero(cropped_arr[:,:,2])
+                relative_freq = np.array(non_zero_count/(cropped_arr.shape[0] * cropped_arr.shape[1]))
+                #print('relative freq ', relative_freq)
+                actual_h = cropped_arr.shape[0]
+                actual_w = cropped_arr.shape[1]
+                cropped_arr = cv2.resize(cropped_arr, (256, 256))
+                #print('after resize ',cropped_arr.min(),cropped_arr.max())
+                if not os.path.exists(f"data/train_h5_256_{AREA}_{version}/{im_tok}"):
+                    os.mkdir(f"data/train_h5_256_{AREA}_{version}/{im_tok}")
 
+                hdf5_path = os.path.join(f"data/train_h5_256_{AREA}_{version}/{im_tok}",f'{im_tok}_{count}.hdf5')
+                hdf5_file = h5py.File(hdf5_path, mode='w')
+                hdf5_file.create_dataset("train_img",cropped_arr.shape,np.uint8)
+                hdf5_file.create_dataset("protein_rf",relative_freq.shape,np.float)
+                #hdf5_file.create_dataset("actual_h",relative_freq.shape,np.int)
+                #hdf5_file.create_dataset("actual_w",relative_freq.shape,np.int)
+                hdf5_file["train_img"][...] = cropped_arr
+                hdf5_file["protein_rf"][...] = relative_freq
+                #hdf5_file["actual_h"][...] = actual_h
+                #hdf5_file["actual_w"][...] = actual_w
+                hdf5_file.close()
+                
+
+                #area_list.append(cropped_arr.shape[0] * cropped_arr.shape[1]
+                #crop_img_list.append(cropped_arr)
+        except:
+            pass
+            #print('no nuce ')
+            #print(true_nu_points)
 
 img_token_list = train_df['ID'].values
 

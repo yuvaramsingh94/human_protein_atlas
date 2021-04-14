@@ -22,6 +22,7 @@ def img_splitter(im_tok):
     #img_blue   = np.expand_dims(imageio.imread(os.path.join('data/train',f'{im_tok}_blue.png')), axis = -1)
     #image = np.concatenate([img_red, img_yellow, img_green, img_blue], axis=-1)
     img_mask = np.load(os.path.join('data/hpa_cell_mask',f'{im_tok}.npz'))['arr_0'].astype(np.uint8)
+    img_nu_mask = np.load(os.path.join('data/hpa_nuclei_mask',f'{im_tok}.npz'))['arr_0'].astype(np.uint8)
 
     #area_list = []
     crop_img_list = []
@@ -32,25 +33,34 @@ def img_splitter(im_tok):
     #print(masked_img.shape)
     for i in range(1, img_mask.max() + 1):
         bmask = img_mask == i
-        bmask = np.expand_dims(bmask, axis = -1)
-        #bmask = np.concatenate([bmask, bmask, bmask, bmask], axis=-1)
-        #masked_img = image * bmask
+        masked_nuclieus = img_nu_mask * bmask
+        true_nu_points = np.argwhere(masked_nuclieus)
 
-        true_points = np.argwhere(bmask)
-        top_left = true_points.min(axis=0)
-        bottom_right = true_points.max(axis=0)
-        cropped_arr = masked_img[top_left[0]:bottom_right[0]+1,top_left[1]:bottom_right[1]+1]
-        #print(cropped_arr.shape)
-        #print('Area: ',cropped_arr.shape[0] * cropped_arr.shape[1])
-        if cropped_arr.shape[0] * cropped_arr.shape[1] > AREA:
-            selected_cell_count += 1
-            #print(cropped_arr.min(), cropped_arr.max())
-            cropped_arr = resize(cropped_arr, (224, 224))
-            #print(cropped_arr.min(), cropped_arr.max())
-            #area_list.append(cropped_arr.shape[0] * cropped_arr.shape[1]
-            #crop_img_list.append(cropped_arr)
-            
-            #pass
+        try:
+            top_nu_left = true_nu_points.min(axis=0)
+            bottom_nu_right = true_nu_points.max(axis=0)
+            bmask = np.expand_dims(bmask, axis = -1)
+            #bmask = np.concatenate([bmask, bmask, bmask, bmask], axis=-1)
+            #masked_img = image * bmask
+
+            true_points = np.argwhere(bmask)
+            top_left = true_points.min(axis=0)
+            bottom_right = true_points.max(axis=0)
+            cropped_arr = masked_img[top_left[0]:bottom_right[0]+1,top_left[1]:bottom_right[1]+1]
+            #print(cropped_arr.shape)
+            #print('Area: ',cropped_arr.shape[0] * cropped_arr.shape[1])
+            if cropped_arr.shape[0] * cropped_arr.shape[1] > AREA:
+                selected_cell_count += 1
+                #print(cropped_arr.min(), cropped_arr.max())
+                cropped_arr = resize(cropped_arr, (224, 224))
+                #print(cropped_arr.min(), cropped_arr.max())
+                #area_list.append(cropped_arr.shape[0] * cropped_arr.shape[1]
+                #crop_img_list.append(cropped_arr)
+                
+                #pass
+        except:
+            #print(true_nu_points)
+            pass
     crop_img_arr = np.array(crop_img_list)
 
     selected_cells.append(selected_cell_count)
@@ -68,9 +78,10 @@ for i in  tqdm(img_token_list):
     
 v = {'ID':file_name,'total_cell_mask':total_cell_mask,'selected_cells':selected_cells}
 v_df = pd.DataFrame.from_dict(v)
-v_df.to_csv('data/cell_mask_study_v5.csv', index = False)
+v_df.to_csv('data/cell_mask_study_v6.csv', index = False)
 
 #v1 = 30000
 #v2 = 70000
 #v3 = 100000
 #v5 = 40000
+#v6 = 40000 256 nucli

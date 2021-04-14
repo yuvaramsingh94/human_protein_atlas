@@ -57,7 +57,7 @@ def encode_binary_mask(mask: np.ndarray) -> t.Text:
   base64_str = base64.b64encode(binary_str)
   return base64_str.decode()#('ascii')
 
-sub = pd.read_csv('data/train_ext/extra_cutdown_data_part2.csv')
+sub = pd.read_csv('data/train_ext/extra_data_full.csv')
 
 import hpacellseg.cellsegmentator as cellsegmentator
 from hpacellseg.utils import label_cell, label_nuclei
@@ -78,7 +78,7 @@ segmentator = cellsegmentator.CellSegmentator(
 
 import time
 start = time.time()
-bs = 32
+bs = 64
 img_token_sub_list = []
 
 
@@ -107,8 +107,10 @@ for sub in sub_dfs:
             cell_segmentations = segmentator.pred_cells(images)
             predstrings = []
             for i in tqdm(range(len(cell_segmentations))):
-                _, cell_mask = label_cell(nuc_segmentations[i], cell_segmentations[i])
-                np.savez_compressed(f'data/train_ext/mask/{img_id_list[i]}', cell_mask)
+                nu_mask, cell_mask = label_cell(nuc_segmentations[i], cell_segmentations[i])
+                #np.savez_compressed(f'data/train_ext/mask/{img_id_list[i]}', cell_mask)
+                np.savez_compressed(f'data/train_ext/mask/{img_id_list[i]}_cell', cell_mask)
+                np.savez_compressed(f'data/train_ext/mask/{img_id_list[i]}_nu', nu_mask)
 
 
 
