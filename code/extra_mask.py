@@ -12,6 +12,10 @@ import torch.utils.data as data
 import hpacellseg.cellsegmentator as cellsegmentator
 from hpacellseg.utils import label_cell, label_nuclei
 from pycocotools import _mask as coco_mask
+from torch.backends import cudnn
+cudnn.benchmark = True
+
+
 #work/ddsm/hpa/human_protein_atlas/data/train_ext/HPA-Challenge-2021-trainset-extra
 def build_image_names(image_id: str) -> list:
     # mt is the mitchondria

@@ -21,7 +21,7 @@ import random
 import albumentations as albu
 from augmix import RandomAugMix
 from torch.backends import cudnn
-cudnn.benchmarks = True
+cudnn.benchmark = True
 
 
 
@@ -45,7 +45,7 @@ def train(model,train_dataloader,optimizer,criterion):
         X = X.permute(0,1,4,2,3)
         #print(X[:,:,:4,:,:].min(), X.max())
         
-        optimizer.zero_grad()
+        optimizer.zero_grad(set_to_none=True)#better mode
         with torch.cuda.amp.autocast():
             with torch.no_grad():
                 spe = model.extract_features(X)
@@ -259,7 +259,7 @@ def run(fold):
     
     #this guy need to be hanged
     param_groups = model.trainable_parameters()
-    optimizer = optim.AdamW(param_groups[1], lr= LR)
+    optimizer = optim._multi_tensor.AdamW(param_groups[1], lr= LR)
     
 
     # Scheduler

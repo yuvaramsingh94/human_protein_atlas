@@ -186,3 +186,155 @@ class HpaModel(nn.Module):
         final_output, norm_att, cell_pred = self.att_block(F.dropout(spe, p=0.5, training=self.training))
         cell_pred = torch.sigmoid(cell_pred)
         return {'final_output':final_output, 'cell_pred':cell_pred}
+
+#adding batchnorm to the initial layer with no bias for the conv layer
+class HpaModel_1(nn.Module):
+    def __init__(self, classes, device, base_model_name, pretrained, features):
+        super(HpaModel_1, self).__init__()
+        self.base_model_name = base_model_name
+        self.classes = classes
+        self.features = features
+        mean_list = [0.083170892049318, 0.08627143702844145, 0.05734662013795027, 0.06582942296076659,0.0]
+        std_list = [0.13561066140407024, 0.13301454127989584, 0.09142918497144226, 0.15651865713966945,1.]
+        self.transform=transforms.Compose([Normalize(mean= mean_list,
+                              std= std_list,
+                              device = device)])
+
+        if 'efficientnet' in self.base_model_name:
+            self.model = EfficientNet.from_pretrained(self.base_model_name)#torch.hub.load('lukemelas/EfficientNet-PyTorch', self.base_model_name, pretrained=pretrained)
+            print(self.model)
+        else:
+            base_model = torch.hub.load('zhanghang1989/ResNeSt', self.base_model_name, pretrained=pretrained) 
+            print('the list ',list(base_model.children()))
+            layers = list(base_model.children())[:-2]
+            self.model = nn.Sequential(*layers)
+        self.init_layer = nn.Conv2d(in_channels=5, out_channels=3, kernel_size=1, stride=1,bias= False)
+        self.batch_norm_init = nn.BatchNorm2d(3)
+        self.fc1 = nn.Linear(features, features, bias=True)
+        self.att_block = AttBlock(features, classes, activation="linear")
+
+        #self.backbone = nn.ModuleList([self.init_layer, self.model])
+        #self.fc_attention = nn.ModuleList([self.fc1, self.att_block])
+    def init_attention_layer(self,):
+        print('hi')
+        self.fc1 = nn.Linear(self.features, self.features, bias=True)
+        self.att_block = AttBlock(self.features, self.classes, activation="linear")
+
+    def trainable_parameters(self):
+        return (list(nn.ModuleList([self.init_layer, self.batch_norm_init, self.model]).parameters()), 
+                list(nn.ModuleList([self.fc1, self.att_block]).parameters()))
+    
+    def extract_features(self, x):
+        batch_size, cells, C, H, W = x.size()
+        c_in = self.transform(x.view(batch_size * cells, C, H, W))
+        #print('input c_in ',c_in.shape)
+        c_in = F.relu(self.batch_norm_init(self.init_layer(c_in)))
+        #print('init layer c_in ',c_in.shape)
+        if 'efficientnet' in self.base_model_name:
+            spe = self.model.extract_features(c_in)
+        else:
+            spe = self.model(c_in)
+        spe = F.avg_pool2d(spe, spe.size()[2:]).squeeze()
+
+        return spe.contiguous().view(batch_size, cells, -1)
+    
+    def attention_section(self,spe):
+        spe = F.relu(self.fc1(F.dropout(spe, p=0.5, training=self.training))).permute(0,2,1)
+        #print('spe shape ',spe.shape)
+        final_output, norm_att, cell_pred = self.att_block(F.dropout(spe, p=0.5, training=self.training))
+        cell_pred = torch.sigmoid(cell_pred)
+        return {'final_output':final_output, 'cell_pred':cell_pred}
+
+
+    def forward(self, x):
+        batch_size, cells, C, H, W = x.size()
+        c_in = self.transform(x.view(batch_size * cells, C, H, W))
+        #print('input c_in ',c_in.shape)
+        c_in = F.relu(self.batch_norm_init(self.init_layer(c_in)))
+        #print('init layer c_in ',c_in.shape)
+        if 'efficientnet' in self.base_model_name:
+            spe = self.model.extract_features(c_in)
+        else:
+            spe = self.model(c_in)
+        spe = F.avg_pool2d(spe, spe.size()[2:]).squeeze()
+        #print('enc shape ',spe.shape)
+        spe = F.relu(self.fc1(F.dropout(spe.contiguous().view(batch_size, cells, -1), p=0.5, training=self.training))).permute(0,2,1)
+        #print('spe shape ',spe.shape)
+        final_output, norm_att, cell_pred = self.att_block(F.dropout(spe, p=0.5, training=self.training))
+        cell_pred = torch.sigmoid(cell_pred)
+        return {'final_output':final_output, 'cell_pred':cell_pred}
+
+#here we have mask to not consider black images that we add for padding
+class HpaModel_2(nn.Module):
+    def __init__(self, classes, device, base_model_name, pretrained, features):
+        super(HpaModel_2, self).__init__()
+        self.base_model_name = base_model_name
+        self.classes = classes
+        self.features = features
+        mean_list = [0.083170892049318, 0.08627143702844145, 0.05734662013795027, 0.06582942296076659,0.0]
+        std_list = [0.13561066140407024, 0.13301454127989584, 0.09142918497144226, 0.15651865713966945,1.]
+        self.transform=transforms.Compose([Normalize(mean= mean_list,
+                              std= std_list,
+                              device = device)])
+        base_model = torch.hub.load('pytorch/vision', base_model_name, pretrained=pretrained)
+        layers = list(base_model.children())[:-1]
+        self.model = nn.Sequential(*layers)
+        self.init_layer = nn.Conv2d(in_channels=5, out_channels=3, kernel_size=1, stride=1,bias= False)
+        self.batch_norm_init = nn.BatchNorm2d(3)
+        self.fc1 = nn.Linear(features, features, bias=True)
+        self.att_block = AttBlock(features, classes, activation="linear")
+
+        #self.backbone = nn.ModuleList([self.init_layer, self.model])
+        #self.fc_attention = nn.ModuleList([self.fc1, self.att_block])
+    def init_attention_layer(self,):
+        print('hi')
+        self.fc1 = nn.Linear(self.features, self.features, bias=True)
+        self.att_block = AttBlock(self.features, self.classes, activation="linear")
+
+    def trainable_parameters(self):
+        return (list(nn.ModuleList([self.init_layer, self.batch_norm_init, self.model]).parameters()), 
+                list(nn.ModuleList([self.fc1, self.att_block]).parameters()))
+    
+    def extract_features(self, x):
+        batch_size, cells, C, H, W = x.size()
+        c_in = self.transform(x.view(batch_size * cells, C, H, W))
+        #print('input c_in ',c_in.shape)
+        c_in = F.relu(self.batch_norm_init(self.init_layer(c_in)))
+        #print('init layer c_in ',c_in.shape)
+        if 'efficientnet' in self.base_model_name:
+            spe = self.model.extract_features(c_in)
+        else:
+            spe = self.model(c_in)
+        spe = F.avg_pool2d(spe, spe.size()[2:]).squeeze()
+
+        return spe.contiguous().view(batch_size, cells, -1)
+    
+    def attention_section(self,spe):
+        spe = F.relu(self.fc1(F.dropout(spe, p=0.5, training=self.training))).permute(0,2,1)
+        #print('spe shape ',spe.shape)
+        final_output, norm_att, cell_pred = self.att_block(F.dropout(spe, p=0.5, training=self.training))
+        cell_pred = torch.sigmoid(cell_pred)
+        return {'final_output':final_output, 'cell_pred':cell_pred}
+
+
+    def forward(self, x, mask):
+        batch_size, cells, C, H, W = x.size()
+        c_in = self.transform(x.view(batch_size * cells, C, H, W))
+        #print('input c_in ',c_in.shape)
+        c_in = F.relu(self.batch_norm_init(self.init_layer(c_in)))
+        #print('init layer c_in ',c_in.shape)
+        if 'efficientnet' in self.base_model_name:
+            spe = self.model.extract_features(c_in)
+        else:
+            spe = self.model(c_in)
+        spe = F.avg_pool2d(spe, spe.size()[2:]).squeeze()
+        #print('enc shape ',spe.shape)
+        #print('mask ',mask)
+        spe = spe.contiguous().view(batch_size, cells, -1)[:,:mask,:]
+        
+        #print('spe shape ',spe.shape)
+        spe = F.relu(self.fc1(F.dropout(spe, p=0.5, training=self.training))).permute(0,2,1)
+        #print('spe shape ',spe.shape)
+        final_output, norm_att, cell_pred = self.att_block(F.dropout(spe, p=0.5, training=self.training))
+        cell_pred = torch.sigmoid(cell_pred)
+        return {'final_output':final_output, 'cell_pred':cell_pred}

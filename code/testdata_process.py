@@ -67,7 +67,7 @@ def encode_binary_mask(mask: np.ndarray) -> t.Text:
   return base64_str.decode()#('ascii')
 
 sub = pd.read_csv('data/sample_submission.csv')
-#'''
+'''
 import hpacellseg.cellsegmentator as cellsegmentator
 from hpacellseg.utils import label_cell, label_nuclei
 from pycocotools import _mask as coco_mask
@@ -130,9 +130,11 @@ for sub in sub_dfs:
         except Exception as e: 
             print('hitting except ',e)
             continue
-#'''
+'''
 '''
 AREA = 40000
+#BUFFER = 20#pix
+SIZE = 256
 def img_splitter(im_tok):
 
     img_red    = np.expand_dims(imageio.imread(os.path.join('data/test',f'{im_tok}_red.png')), axis = -1)
@@ -140,54 +142,76 @@ def img_splitter(im_tok):
     img_green  = np.expand_dims(imageio.imread(os.path.join('data/test',f'{im_tok}_green.png')), axis = -1)
     img_blue   = np.expand_dims(imageio.imread(os.path.join('data/test',f'{im_tok}_blue.png')), axis = -1)
     image = np.concatenate([img_red, img_yellow, img_green, img_blue], axis=-1)
-    img_mask = np.load(os.path.join('data/test_mask',f'{im_tok}.npz'))['arr_0'].astype(np.uint8)
-
+    img_cell_mask = np.load(os.path.join('data/test_mask',f'{im_tok}_cell.npz'))['arr_0'].astype(np.uint8)
+    img_nu_mask = np.load(os.path.join('data/test_mask',f'{im_tok}_nu.npz'))['arr_0'].astype(np.uint8)
+    Shape = img_cell_mask.shape
     #print('img shape ',image.shape)
     #print('mask shape ',img_mask.shape)
 
-    if image.shape[:-1] != img_mask.shape:
+    if image.shape[:-1] != img_cell_mask.shape:
         print('they are not same ',im_tok)
         print('img shape ',image.shape)
-        print('mask shape ',img_mask.shape)
+        print('mask shape ',img_cell_mask.shape)
 
-    if not os.path.exists(f"data/test_h5_224_50000/{im_tok}"):
-                os.mkdir(f"data/test_h5_224_50000/{im_tok}")
+    if not os.path.exists(f"data/test_h5_{SIZE}_{AREA}/{im_tok}"):
+                os.mkdir(f"data/test_h5_{SIZE}_{AREA}/{im_tok}")
     count = 0
-    for i in range(1, img_mask.max() + 1):
-        bmask = img_mask == i
-        enc_maskkkkkk = encode_binary_mask(bmask)
-        
+    for i in range(1, img_cell_mask.max() + 1):
+        bmask = img_cell_mask == i
+        masked_nuclieus = img_nu_mask * bmask
 
-        bmask = np.expand_dims(bmask, axis = -1)
-        bmask = np.concatenate([bmask, bmask, bmask, bmask], axis=-1)
-        masked_img = image * bmask
-
-        true_points = np.argwhere(bmask)
-        top_left = true_points.min(axis=0)
-        bottom_right = true_points.max(axis=0)
-        cropped_arr = masked_img[top_left[0]:bottom_right[0]+1,top_left[1]:bottom_right[1]+1]
-        non_zero_count = np.count_nonzero(cropped_arr[:,:,2])
-        relative_freq = np.array(non_zero_count/(cropped_arr.shape[0] * cropped_arr.shape[1]))
-        #print(relative_freq)
-        if cropped_arr.shape[0] * cropped_arr.shape[1] > AREA:
-
-            token_list.append(im_tok)
-            token_count.append(i)
-            token_enc.append('' + enc_maskkkkkk)
+        true_nu_points = np.argwhere(masked_nuclieus)
+        try:
+            top_nu_left = true_nu_points.min(axis=0)
+            bottom_nu_right = true_nu_points.max(axis=0)
+            
+            #height , width
+            y1, x1 = top_nu_left
+            y2, x2 = bottom_nu_right
 
 
-            count += 1
-            cropped_arr = resize(cropped_arr, (224, 224))
+            enc_maskkkkkk = encode_binary_mask(bmask)
+            bmask = np.expand_dims(bmask, axis = -1)
+            bmask = np.concatenate([bmask, bmask, bmask, bmask], axis=-1)
+            masked_img = image * bmask
 
-            hdf5_path = os.path.join(f'data/test_h5_224_50000/{im_tok}',f'{im_tok}_{i}.hdf5')
-            hdf5_file = h5py.File(hdf5_path, mode='w')
-            hdf5_file.create_dataset("test_img",cropped_arr.shape,np.float)
-            hdf5_file.create_dataset("protein_rf",relative_freq.shape,np.float)
-            hdf5_file["test_img"][...] = cropped_arr
-            hdf5_file["protein_rf"][...] = relative_freq
-            hdf5_file.close()
-        else:
-            print('not selected')
+            true_points = np.argwhere(bmask)
+            top_left = true_points.min(axis=0)
+            bottom_right = true_points.max(axis=0)
+            cropped_arr = masked_img[top_left[0]:bottom_right[0]+1,top_left[1]:bottom_right[1]+1]
+            non_zero_count = np.count_nonzero(cropped_arr[:,:,2])
+            relative_freq = np.array(non_zero_count/(cropped_arr.shape[0] * cropped_arr.shape[1]))
+            #print(relative_freq)
+            if cropped_arr.shape[0] * cropped_arr.shape[1] > AREA:
+                
+                #if not (y1 < BUFFER or x1 < BUFFER or y2 > Shape[0] - BUFFER or x2 > Shape[1] - BUFFER):
+
+                token_list.append(im_tok)
+                token_count.append(i)
+                token_enc.append('' + enc_maskkkkkk)
+
+
+                count += 1
+                cropped_arr = resize(cropped_arr, (SIZE, SIZE))
+                
+                hdf5_path = os.path.join(f'data/test_h5_{SIZE}_{AREA}/{im_tok}',f'{im_tok}_{i}.hdf5')
+                hdf5_file = h5py.File(hdf5_path, mode='w')
+                hdf5_file.create_dataset("test_img",cropped_arr.shape,np.float)
+                hdf5_file.create_dataset("protein_rf",relative_freq.shape,np.float)
+                hdf5_file["test_img"][...] = cropped_arr
+                hdf5_file["protein_rf"][...] = relative_freq
+                hdf5_file.close()
+                
+                #else:
+                #    pass
+                    #print('Border nuc ',top_nu_left, bottom_nu_right)
+                    #print('shape ',Shape)
+            else:
+                pass
+                #print('not selected')
+        except:
+            print('no nuce ')
+            print(true_nu_points)
     if count ==0:#no cell is detected, we are not sending any spl mask now as we think if a image has no detected mask
         pass ## this can be taken carte when we mergeteh sample sub csv . 
 img_token_list = sub['ID'].values#[:5]
@@ -196,20 +220,23 @@ token_list = []
 token_count = []
 token_enc = []
 
-if not os.path.exists(f"data/test_h5_224_40000"):
-                os.mkdir(f"data/test_h5_224_40000")
+if not os.path.exists(f"data/test_h5_{SIZE}_{AREA}"):
+                os.mkdir(f"data/test_h5_{SIZE}_{AREA}")
 
 for i in tqdm(img_token_list):
     img_splitter(i)
 
 test_enc_df = pd.DataFrame.from_dict({'ID': token_list, 'count': token_count, 'encoding': token_enc})
-test_enc_df.to_csv('data/test_enc_v5.csv',index=False)
+test_enc_df.to_csv('data/test_enc_v7.csv',index=False)
+
+
 '''
 BATCH_SIZE = 64
 WORKERS = 15
 n_classes = 19
+SIZE = 256
 metric_use = 'loss'
-vees = 'v6_2_2'
+vees = 'v6_5'
 WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
 
 if not os.path.exists(WORK_LOCATION):
@@ -222,21 +249,21 @@ n_classes = 19
 model_fold_0 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'resnest50', features = 2048, pretrained = False)
 
-model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/st_fold_{0}_seed_1/model_st_{metric_use}_{0}.pth",map_location = device))
+model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_1/model_{metric_use}_{0}.pth",map_location = device))
 model_fold_0.to(device)
 model_fold_0.eval()
 
 model_fold_1 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'resnest50', features = 2048, pretrained = False)
 
-model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/st_fold_{1}_seed_1/model_st_{metric_use}_{1}.pth",map_location = device))
+model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_2/model_{metric_use}_{1}.pth",map_location = device))
 model_fold_1.to(device)
 model_fold_1.eval()
 
 model_fold_2 = HpaModel(classes = n_classes, device = device, 
                         base_model_name = 'resnest50', features = 2048, pretrained = False)
 
-model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/st_fold_{2}_seed_2/model_st_{metric_use}_{2}.pth",map_location = device))
+model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_1/model_{metric_use}_{2}.pth",map_location = device))
 model_fold_2.to(device)
 model_fold_2.eval()
 
@@ -288,13 +315,13 @@ class hpa_dataset(data.Dataset):
             vv = h['test_img'][...]
             rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
             #print('this is rf ', rf)
-            rf_np = np.full(shape = (224,224), fill_value = rf)
+            rf_np = np.full(shape = (SIZE,SIZE), fill_value = rf)
             vv = np.dstack([vv,rf_np])
         return { 'image':vv}
 
-test_enc_df = pd.read_csv('data/test_enc_v5.csv')#[:10]
+test_enc_df = pd.read_csv('data/test_enc_v7.csv')#[:10]
 
-test_dataset = hpa_dataset(main_df = test_enc_df, path = 'data/test_h5_224_40000/')
+test_dataset = hpa_dataset(main_df = test_enc_df, path = 'data/test_h5_256_40000/')
 test_dataloader = data.DataLoader(
         test_dataset,
         batch_size=BATCH_SIZE,
@@ -369,6 +396,10 @@ data/test_h5_224_30000_v2/
 above 40000
 test_enc_v5.csv
 data/test_h5_224_40000
+
+above 40000 size 256
+test_enc_v7.csv
+data/test_h5_256_40000
 
 above 50000
 test_enc_v6.csv
