@@ -15,16 +15,17 @@ import albumentations as albu
 import argparse
 import math
 import h5py
-from torch.backends import cudnn
-cudnn.benchmark = True
 import matplotlib.pyplot as plt
+from torch.backends import cudnn
+#cudnn.benchmark = True
 
+#https://www.kaggle.com/hirune924/o2unet-loss-aggregate
 
 max_LR = 0.001
 min_LR = 0.00001
 CELL_COUNT = 6
 BATCH_SIZE = 4
-WORKERS = 15
+WORKERS = 20
 EPOCH = 100#60
 O2U_save = 'O2U_v1'
 if not os.path.exists(f"weights/{O2U_save}"):
@@ -219,7 +220,7 @@ def run():
 
     better_df = create_df()
 
-    train_dataset = hpa_dataset_v1(main_df = better_df[:10], path = 'data/train_h5_256_40000_v5',  
+    train_dataset = hpa_dataset_v1(main_df = better_df, path = 'data/train_h5_256_40000_v5',  
                                     cells_used = 6,
                                     size = 256)
 
@@ -235,7 +236,7 @@ def run():
 
 
     model = HpaModel_2(19, device = device, 
-                            base_model_name = 'resnet34', 
+                            base_model_name = 'resnet18', 
                             features = 512, pretrained = True,)
     model = model.to(device)
 
@@ -256,7 +257,7 @@ def run():
 
     data_loss_dict = {'ID':better_df['ID'].values, 
                       'count_list':better_df['count_list'].values,
-                      'count':better_df['count'].values}
+                      'count':better_df['count'].values,'Label':better_df['Label'].values}
     loss_df = pd.DataFrame.from_dict(data_loss_dict)
 
     

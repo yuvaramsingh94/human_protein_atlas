@@ -11,7 +11,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 import torch.optim as optim
-import math
 import gc
 import shutil
 import argparse
@@ -264,7 +263,8 @@ def run(fold):
         criterion = torch.nn.MSELoss().cuda(device=device)
     if config['general']['loss'] == 'focal':
         print('Using Focal loss')
-        criterion = focal_loss(alpha=0.25, gamma=2).cuda(device=device)
+        ## basic alp 0.25 gam 2 
+        criterion = focal_loss(alpha=0.1, gamma=5).cuda(device=device)
 
 
     writer = SummaryWriter(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/log_dir")

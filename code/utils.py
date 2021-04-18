@@ -145,7 +145,15 @@ class hpa_dataset_v1(data.Dataset):
                 zero_arr = np.zeros(shape, dtype=float)
                 ##print('zero_arr ',zero_arr.shape)
                 ##print('train_img ',train_img.shape)
+                #try:
                 train_img = np.concatenate([train_img, zero_arr], axis=0)
+                #except:
+                #    print('error ')
+                #    print(ids)
+                #    print(train_img.shape)
+                #    print(zero_arr.shape)
+                #    print(cell_count)
+
                 target_vec[-1] = 1# as we are adding black img . negative = 1 also
                 #print('black ',target_vec)
 

@@ -78,11 +78,11 @@ def img_splitter(im_tok):
                 #area_list.append(cropped_arr.shape[0] * cropped_arr.shape[1]
                 #crop_img_list.append(cropped_arr)
         except:
-            pass
-            #print('no nuce ')
+            #pass
+            print('no nuce ')
             #print(true_nu_points)
 
-img_token_list = train_df['ID'].values
+img_token_list = ['6057d35c-bb9f-11e8-b2b9-ac1f6b6435d0']#train_df['ID'].values
 
 #for i in  img_token_list[:3]:
     #print(i)

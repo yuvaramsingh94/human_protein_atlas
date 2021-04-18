@@ -1,0 +1,10 @@
+Study statistics: 
+  Number of finished trials:  20
+  Number of pruned trials:  9
+  Number of complete trials:  11
+Best trial:
+  Value:  0.001213141112733697
+  Params: 
+    lr: 0.00024305732729125383
+    alpha: 0.10379476810366522
+    gamma: 5

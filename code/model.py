@@ -202,10 +202,10 @@ class HpaModel_1(nn.Module):
 
         if 'efficientnet' in self.base_model_name:
             self.model = EfficientNet.from_pretrained(self.base_model_name)#torch.hub.load('lukemelas/EfficientNet-PyTorch', self.base_model_name, pretrained=pretrained)
-            print(self.model)
+            #print(self.model)
         else:
             base_model = torch.hub.load('zhanghang1989/ResNeSt', self.base_model_name, pretrained=pretrained) 
-            print('the list ',list(base_model.children()))
+            #print('the list ',list(base_model.children()))
             layers = list(base_model.children())[:-2]
             self.model = nn.Sequential(*layers)
         self.init_layer = nn.Conv2d(in_channels=5, out_channels=3, kernel_size=1, stride=1,bias= False)
