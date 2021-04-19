@@ -127,6 +127,8 @@ class HpaModel(nn.Module):
         if 'efficientnet' in self.base_model_name:
             self.model = EfficientNet.from_pretrained(self.base_model_name)#torch.hub.load('lukemelas/EfficientNet-PyTorch', self.base_model_name, pretrained=pretrained)
             print(self.model)
+        
+
         else:
             base_model = torch.hub.load('zhanghang1989/ResNeSt', self.base_model_name, pretrained=pretrained) 
             print('the list ',list(base_model.children()))
@@ -203,6 +205,10 @@ class HpaModel_1(nn.Module):
         if 'efficientnet' in self.base_model_name:
             self.model = EfficientNet.from_pretrained(self.base_model_name)#torch.hub.load('lukemelas/EfficientNet-PyTorch', self.base_model_name, pretrained=pretrained)
             #print(self.model)
+        elif 'resnet' in self.base_model_name:
+            base_model = torch.hub.load('pytorch/vision', base_model_name, pretrained=pretrained)
+            layers = list(base_model.children())[:-1]
+            self.model = nn.Sequential(*layers)
         else:
             base_model = torch.hub.load('zhanghang1989/ResNeSt', self.base_model_name, pretrained=pretrained) 
             #print('the list ',list(base_model.children()))

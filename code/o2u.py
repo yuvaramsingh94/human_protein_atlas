@@ -23,11 +23,11 @@ from torch.backends import cudnn
 
 max_LR = 0.001
 min_LR = 0.00001
-CELL_COUNT = 6
+CELL_COUNT = 12
 BATCH_SIZE = 4
-WORKERS = 20
-EPOCH = 100#60
-O2U_save = 'O2U_v1'
+WORKERS = 10
+EPOCH = 75#60
+O2U_save = 'O2U_v2'
 if not os.path.exists(f"weights/{O2U_save}"):
     os.mkdir(f"weights/{O2U_save}")
 
@@ -40,14 +40,14 @@ parser.add_argument('cuda', metavar='N', type=int, nargs='+',
 
 def create_df():
     train_df = pd.read_csv('data/cell_mask_study_30000.csv')
-    filtered_df_10_greater = train_df[(train_df['selected_cells'] >10) ] 
+    filtered_df_10_greater = train_df[(train_df['selected_cells'] >12) ] 
     actual_cells = []
     PATH = 'data/train_h5_256_40000_v5/'
     for i in filtered_df_10_greater['ID'].values:
         actual_cells.append(len(os.listdir(os.path.join(PATH, i))))
     filtered_df_10_greater['actual_cells'] = actual_cells
 
-    cells_count = 6
+    cells_count = CELL_COUNT
     total_samples = filtered_df_10_greater.shape[0]
 
     ID_list = []
@@ -219,9 +219,11 @@ def run():
 
 
     better_df = create_df()
-
+    print('shape of better before ',better_df.shape)
+    better_df = better_df[better_df['count']>5]
+    print('shape of better ',better_df.shape)
     train_dataset = hpa_dataset_v1(main_df = better_df, path = 'data/train_h5_256_40000_v5',  
-                                    cells_used = 6,
+                                    cells_used = CELL_COUNT,
                                     size = 256)
 
     train_dataloader = data.DataLoader(
@@ -236,7 +238,7 @@ def run():
 
 
     model = HpaModel_2(19, device = device, 
-                            base_model_name = 'resnet18', 
+                            base_model_name = 'resnet34', 
                             features = 512, pretrained = True,)
     model = model.to(device)
 
@@ -245,7 +247,7 @@ def run():
 
     # Scheduler
     scheduler = CosineAnnealingWarmupRestarts(optimizer,
-                                          first_cycle_steps=20,
+                                          first_cycle_steps=15,
                                           cycle_mult=1.0,
                                           max_lr=max_LR,
                                           min_lr=min_LR,

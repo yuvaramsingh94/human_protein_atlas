@@ -230,10 +230,12 @@ def run(fold):
 
     print(f'Train df {train_df.shape} valid df {valid_df.shape}')
 
+    
     train_dataset = hpa_dataset_v1(main_df = train_df, path = DATA_PATH, augmentation = aug_fn, aug_per= 0.8, 
                                     cells_used = cells_used,label_smoothing = config.getboolean('general','label_smoothing'),
-                                     l_alp = 0.3, size = int(config['general']['size']))
-    valid_dataset = hpa_dataset_v1(main_df = valid_df, path = DATA_PATH, cells_used = cells_used, is_validation = True, size = int(config['general']['size']))
+                                     l_alp = 0.3, size = int(config['general']['size']), cell_repetition = config.getboolean('general','cell_repetition'))
+    valid_dataset = hpa_dataset_v1(main_df = valid_df, path = DATA_PATH, cells_used = cells_used, is_validation = True, 
+                                size = int(config['general']['size']), cell_repetition = config.getboolean('general','cell_repetition'))
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}"):
         os.mkdir(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}")
@@ -416,6 +418,7 @@ if __name__ == "__main__":
     
     aug_fn = albu.Compose(
         [
+            #'''
             RandomAugMix(p=.5),
             albu.OneOf([
                 albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, border_mode = 1),
@@ -423,7 +426,7 @@ if __name__ == "__main__":
                 albu.GridDistortion(num_steps=3, distort_limit=0.4, interpolation=1, border_mode=1),#num_steps=5, distort_limit=0.3
             ], p=.5),
             
-            
+            #'''
             albu.HorizontalFlip(p=.5),
             albu.VerticalFlip(p=.5),
             albu.Cutout(
@@ -433,7 +436,6 @@ if __name__ == "__main__":
                 fill_value=0,
                 p=0.5,
             ),
-            #albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, p=0.7),
             albu.ToFloat(max_value=255.,always_apply=True),
         ]
     )

@@ -236,7 +236,7 @@ WORKERS = 15
 n_classes = 19
 SIZE = 256
 metric_use = 'loss'
-vees = 'v6_5_1'
+vees = 'v6_6'
 WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
 
 if not os.path.exists(WORK_LOCATION):
