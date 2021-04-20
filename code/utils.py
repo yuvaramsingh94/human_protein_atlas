@@ -163,6 +163,7 @@ class hpa_dataset_v1(data.Dataset):
 
                     train_img = np.array(cell_list)
                 else:
+                    train_img = np.array(cell_list)
                     shape = (self.cells_used - cell_count + 1, self.size, self.size, 5)
                     zero_arr = np.zeros(shape, dtype=float)
                     train_img = np.concatenate([train_img, zero_arr], axis=0)
@@ -248,6 +249,7 @@ class hpa_dataset_v1(data.Dataset):
 
                     train_img = np.array(cell_list)
                 else:
+                    train_img = np.array(cell_list)
                     shape = (self.cells_used - cell_count + 1, self.size, self.size, 5)
                     zero_arr = np.zeros(shape, dtype=float)
                     train_img = np.concatenate([train_img, zero_arr], axis=0)

@@ -17,8 +17,6 @@ from torch.backends import cudnn
 cudnn.benchmark = True
 
 
-
-
 ### amp
 scaler = amp.GradScaler()
 
@@ -96,8 +94,8 @@ def run(trial):
 
     train_dataset = hpa_dataset_v1(main_df = train_df, path = DATA_PATH, augmentation = aug_fn, aug_per= 0.8, 
                                     cells_used = cells_used,label_smoothing = False,
-                                     l_alp = 0.0, size =  256)
-    valid_dataset = hpa_dataset_v1(main_df = valid_df, path = DATA_PATH, cells_used = cells_used, is_validation = True, size = 256)
+                                     l_alp = 0.0, size =  256, cell_repetition = False)
+    valid_dataset = hpa_dataset_v1(main_df = valid_df, path = DATA_PATH, cells_used = cells_used, is_validation = True, size = 256, cell_repetition = False)
 
     train_dataloader = data.DataLoader(
             train_dataset,
@@ -120,8 +118,8 @@ def run(trial):
     )
 
     model = HpaModel_1(classes = 19, device = device, 
-                            base_model_name = 'resnest50', 
-                            features = 2048, pretrained = True,)
+                            base_model_name = 'efficientnet-b4', 
+                            features = 1792, pretrained = True,)
     model = model.to(device)
 
     lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
@@ -154,7 +152,7 @@ if __name__ == "__main__":
     cells_used = 8
     SEED = 1
     EPOCH = 5
-    CUDA_DEVICE = 1
+    CUDA_DEVICE = 0
     fold = 0
     set_seed(SEED)
     device = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
