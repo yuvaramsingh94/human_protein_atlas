@@ -11,3 +11,4 @@ log_dir/
 log_dir_st2/
 *.tsv
 *.log
+*.txt

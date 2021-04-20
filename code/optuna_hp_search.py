@@ -13,7 +13,9 @@ import torch.nn.functional as F
 import optuna
 import albumentations as albu
 from augmix import RandomAugMix
+import math
 from torch.backends import cudnn
+
 cudnn.benchmark = True
 
 
@@ -137,8 +139,12 @@ def run(trial):
         train_loss = train(model, train_dataloader, optimizer, criterion)
         valid_loss = validation(model, valid_dataloader, criterion)
         print(f'Training {train_loss} valid {valid_loss}')
+        #valid_loss = float('nan')
+        if math.isnan(valid_loss):
+            valid_loss = 10000.
+        
         trial.report(valid_loss, epoch)
-
+        
         # Handle pruning based on the intermediate value.
         if trial.should_prune():
             raise optuna.exceptions.TrialPruned()
