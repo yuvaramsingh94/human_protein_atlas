@@ -60,13 +60,13 @@ class Autopool_1(nn.Module):
         return final_out, sigmoid_output
 
 class HpaSub(nn.Module):
-    def __init__(self, classes, features):
+    def __init__(self, classes, features, sub_units, sub_drop):
         super(HpaSub, self).__init__()
         self.species = nn.Sequential(
-            nn.Linear(features, 512),
+            nn.Linear(features, sub_units),
             nn.ReLU(),
-            nn.Dropout(p=0.2),
-            nn.Linear(512, classes),
+            nn.Dropout(p=sub_drop),
+            nn.Linear(sub_units, classes),
         )
 
     def forward(self, GAP):
@@ -77,7 +77,7 @@ class HpaSub(nn.Module):
         return spe
 
 class HpaModel(nn.Module):
-    def __init__(self, classes, device, base_model_name, pretrained, features, init_linear_comb = False):
+    def __init__(self, classes, device, base_model_name, pretrained, features, sub_units, sub_drop, init_linear_comb = False):
         super(HpaModel, self).__init__()
         self.base_model_name = base_model_name
         mean_list = [0.083170892049318, 0.08627143702844145, 0.05734662013795027, 0.06582942296076659, 0.0]
@@ -91,10 +91,10 @@ class HpaModel(nn.Module):
         #print(base_model_name)
         if 'efficientnet' in self.base_model_name:
             self.model = EfficientNet.from_pretrained(self.base_model_name)#torch.hub.load('lukemelas/EfficientNet-PyTorch', self.base_model_name, pretrained=pretrained)
-            print(self.model)
+            #print(self.model)
         else:
             base_model = torch.hub.load('zhanghang1989/ResNeSt', self.base_model_name, pretrained=pretrained) 
-            print('the list ',list(base_model.children()))
+            #print('the list ',list(base_model.children()))
             layers = list(base_model.children())[:-2]
             self.model = nn.Sequential(*layers)
         
@@ -103,6 +103,7 @@ class HpaModel(nn.Module):
 
 
         self.init_layer = nn.Conv2d(in_channels=5, out_channels=3, kernel_size=1, stride=1,bias= True)
+        self.batch_norm_init = nn.BatchNorm2d(3)
 
         
 
@@ -117,11 +118,11 @@ class HpaModel(nn.Module):
 
 
         #self.model = nn.Sequential(*layers)
-        self.fc = HpaSub(classes, features)
+        self.fc = HpaSub(classes, features, sub_units, sub_drop)
         self.autopool = Autopool(input_size = classes, device = device)
 
         self.backbone = nn.ModuleList([self.model])
-        self.newly_added = nn.ModuleList([self.init_layer, self.fc, self.autopool])
+        self.newly_added = nn.ModuleList([self.init_layer, self.fc, self.autopool, self.batch_norm_init])
 
     def trainable_parameters(self):
 
@@ -132,12 +133,7 @@ class HpaModel(nn.Module):
         batch_size, cells, C, H, W = x.size()
         c_in = self.transform(x.view(batch_size * cells, C, H, W))
         #print('input c_in ',c_in[0,4,:,:])
-        if self.init_linear_comb:
-            print('init')
-            c_in = self.init_layer(c_in)
-        else:
-            #print('aama')
-            c_in = F.relu(self.init_layer(c_in))
+        c_in = F.relu(self.batch_norm_init(self.init_layer(c_in)))
 
         #thinking about adding a batchnorm layer here.........
 
