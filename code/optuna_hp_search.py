@@ -116,15 +116,18 @@ def run(trial):
         pin_memory=True,
         
     )
-
-    model = HpaModel_1(classes = 19, device = device, 
-                            base_model_name = 'efficientnet-b4', 
-                            features = 1792, pretrained = True,)
-    model = model.to(device)
-
     lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
     alpha = trial.suggest_float("alpha", 0.1, 0.5, log=True)
     gamma = trial.suggest_int("gamma", 1, 5, log=True)
+    spe_drop = trial.suggest_float("spe_drop", 0.2, 0.8, log=True)
+    att_drop = trial.suggest_float("att_drop", 0.2, 0.8, log=True)
+
+    model = HpaModel_1(classes = 19, device = device, 
+                            base_model_name = 'efficientnet-b4', 
+                            features = 1792, pretrained = True, spe_drop = spe_drop, att_drop = att_drop)
+    model = model.to(device)
+
+    
 
     optimizer = optim._multi_tensor.AdamW(params=model.parameters(), lr= lr)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=30)
@@ -133,7 +136,7 @@ def run(trial):
     for epoch in range(EPOCH):
         train_loss = train(model, train_dataloader, optimizer, criterion)
         valid_loss = validation(model, valid_dataloader, criterion)
-
+        print(f'Training {train_loss} valid {valid_loss}')
         trial.report(valid_loss, epoch)
 
         # Handle pruning based on the intermediate value.

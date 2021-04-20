@@ -191,11 +191,13 @@ class HpaModel(nn.Module):
 
 #adding batchnorm to the initial layer with no bias for the conv layer
 class HpaModel_1(nn.Module):
-    def __init__(self, classes, device, base_model_name, pretrained, features):
+    def __init__(self, classes, device, base_model_name, pretrained, features, spe_drop = 0.5, att_drop = 0.5):
         super(HpaModel_1, self).__init__()
         self.base_model_name = base_model_name
         self.classes = classes
         self.features = features
+        self.spe_drop = spe_drop
+        self.att_drop = att_drop
         mean_list = [0.083170892049318, 0.08627143702844145, 0.05734662013795027, 0.06582942296076659,0.0]
         std_list = [0.13561066140407024, 0.13301454127989584, 0.09142918497144226, 0.15651865713966945,1.]
         self.transform=transforms.Compose([Normalize(mean= mean_list,
@@ -245,9 +247,9 @@ class HpaModel_1(nn.Module):
         return spe.contiguous().view(batch_size, cells, -1)
     
     def attention_section(self,spe):
-        spe = F.relu(self.fc1(F.dropout(spe, p=0.5, training=self.training))).permute(0,2,1)
+        spe = F.relu(self.fc1(F.dropout(spe, p=self.spe_drop, training=self.training))).permute(0,2,1)
         #print('spe shape ',spe.shape)
-        final_output, norm_att, cell_pred = self.att_block(F.dropout(spe, p=0.5, training=self.training))
+        final_output, norm_att, cell_pred = self.att_block(F.dropout(spe, p=self.att_drop, training=self.training))
         cell_pred = torch.sigmoid(cell_pred)
         return {'final_output':final_output, 'cell_pred':cell_pred}
 
@@ -264,9 +266,9 @@ class HpaModel_1(nn.Module):
             spe = self.model(c_in)
         spe = F.avg_pool2d(spe, spe.size()[2:]).squeeze()
         #print('enc shape ',spe.shape)
-        spe = F.relu(self.fc1(F.dropout(spe.contiguous().view(batch_size, cells, -1), p=0.5, training=self.training))).permute(0,2,1)
+        spe = F.relu(self.fc1(F.dropout(spe.contiguous().view(batch_size, cells, -1), p=self.spe_drop, training=self.training))).permute(0,2,1)
         #print('spe shape ',spe.shape)
-        final_output, norm_att, cell_pred = self.att_block(F.dropout(spe, p=0.5, training=self.training))
+        final_output, norm_att, cell_pred = self.att_block(F.dropout(spe, p=self.att_drop, training=self.training))
         cell_pred = torch.sigmoid(cell_pred)
         return {'final_output':final_output, 'cell_pred':cell_pred}
 
