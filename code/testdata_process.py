@@ -12,7 +12,7 @@ import imageio
 import os
 import h5py
 from skimage.transform import resize
-from model import HpaModel, HpaModel_1
+from model import  HpaModel_1
 import torch
 import torch.utils.data as data
 import hpacellseg.cellsegmentator as cellsegmentator
@@ -236,7 +236,7 @@ WORKERS = 15
 n_classes = 19
 SIZE = 256
 metric_use = 'loss'
-vees = 'v6_5_2_1_1'# actually v6_5_2_1_1
+vees = 'v8s'# actually v6_5_2_1_1
 WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
 
 if not os.path.exists(WORK_LOCATION):
@@ -309,14 +309,13 @@ class hpa_dataset(data.Dataset):
         info = self.main_df.iloc[idx]
         ids = info["ID"]
         count = info["count"]
-
         hdf5_path = os.path.join(self.path,ids,f'{ids}_{count}.hdf5')
         with h5py.File(hdf5_path,"r") as h:
             vv = h['test_img'][...]
-            rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-            #print('this is rf ', rf)
-            rf_np = np.full(shape = (SIZE,SIZE), fill_value = rf)
-            vv = np.dstack([vv,rf_np])
+            protein = np.expand_dims(vv[:,:,2],-1)
+            image = np.dstack([vv[:,:,0], vv[:,:,1], vv[:,:,-1]])
+            #print(f'protein min {protein.min()} max{protein.max()}')
+            vv = image * (protein)
         return { 'image':vv}
 
 test_enc_df = pd.read_csv('data/test_enc_v7.csv')#[:10]
@@ -354,7 +353,7 @@ for i in range(n_classes):
 test_enc_df[[str(i) for i in range(n_classes)]] = predictions
 
 test_enc_df.to_csv(os.path.join(WORK_LOCATION,'stage_1.csv'),index=False)
-tokens_list = test_enc_df.ID.unique()
+tokens_list = test_enc_df.ID.unique()#[:5]
 
 prediction_string_list = []
 token_list = []
