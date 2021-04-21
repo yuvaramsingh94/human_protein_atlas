@@ -89,14 +89,14 @@ class hpa_dataset_v1(data.Dataset):
                     #print(hdf5_path)
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
+                        protein = np.expand_dims(vv[:,:,2],-1)
+                        image = np.dstack([vv[:,:,0], vv[:,:,1], vv[:,:,-1]])
+                        vv = image * (protein/255.)
+                        #print('thsi is vv ',vv.shape)
                         if random.random() < self.aug_percent:
-                            vv = self.augmentation(image= vv)["image"]
+                            vv = self.augmentation(image= vv.astype(np.uint8))["image"]
                         else:
                             vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
                 train_img = np.array(cell_list)
@@ -112,15 +112,15 @@ class hpa_dataset_v1(data.Dataset):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
+                        protein = np.expand_dims(vv[:,:,2],-1)
+                        image = np.dstack([vv[:,:,0], vv[:,:,1], vv[:,:,-1]])
+                        vv = image * (protein/255.)
+                        #print('thsi is vv ',vv.shape)
                         if random.random() < self.aug_percent:
-                            ##print('augmentation')
-                            vv = self.augmentation(image= vv)["image"]
+                            vv = self.augmentation(image= vv.astype(np.uint8))["image"]
                         else:
                             vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
+                        
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
                 train_img = np.array(cell_list)
@@ -132,14 +132,15 @@ class hpa_dataset_v1(data.Dataset):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
+                        protein = np.expand_dims(vv[:,:,2],-1)
+                        image = np.dstack([vv[:,:,0], vv[:,:,1], vv[:,:,-1]])
+                        vv = image * (protein/255.)
+                        #print('thsi is vv ',vv.shape)
                         if random.random() < self.aug_percent:
-                            vv = self.augmentation(image= vv)["image"]
+                            vv = self.augmentation(image= vv.astype(np.uint8))["image"]
                         else:
                             vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
+                        
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
 
@@ -150,14 +151,15 @@ class hpa_dataset_v1(data.Dataset):
                         hdf5_path = os.path.join(self.path,ids,f'{ids}_{cell_choice}.hdf5')
                         with h5py.File(hdf5_path,"r") as h:
                             vv = h['train_img'][...]
+                            protein = np.expand_dims(vv[:,:,2],-1)
+                            image = np.dstack([vv[:,:,0], vv[:,:,1], vv[:,:,-1]])
+                            vv = image * (protein/255.)
+                            #print('thsi is vv ',vv.shape)
                             if random.random() < self.aug_percent:
-                                vv = self.augmentation(image= vv)["image"]
+                                vv = self.augmentation(image= vv.astype(np.uint8))["image"]
                             else:
                                 vv = self.float_conv(image= vv)["image"]
-                            rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                            #print('this is rf ', rf)
-                            rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
-                            vv = np.dstack([vv,rf_np])
+                            
                             #print('this is vv shape ',vv.shape)
                             cell_list.append(vv)
 
@@ -186,11 +188,11 @@ class hpa_dataset_v1(data.Dataset):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
+                        protein = np.expand_dims(vv[:,:,2],-1)
+                        image = np.dstack([vv[:,:,0], vv[:,:,1], vv[:,:,-1]])
+                        vv = image * (protein/255.)
                         vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
+                        
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
                 train_img = np.array(cell_list)
@@ -202,11 +204,11 @@ class hpa_dataset_v1(data.Dataset):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
+                        protein = np.expand_dims(vv[:,:,2],-1)
+                        image = np.dstack([vv[:,:,0], vv[:,:,1], vv[:,:,-1]])
+                        vv = image * (protein/255.)
                         vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
+                        
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
                 train_img = np.array(cell_list)
@@ -218,14 +220,14 @@ class hpa_dataset_v1(data.Dataset):
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
+                        protein = np.expand_dims(vv[:,:,2],-1)
+                        image = np.dstack([vv[:,:,0], vv[:,:,1], vv[:,:,-1]])
+                        vv = image * (protein/255.)
                         if random.random() < self.aug_percent:
                             vv = self.augmentation(image= vv)["image"]
                         else:
                             vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
+                        
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
 
@@ -236,14 +238,14 @@ class hpa_dataset_v1(data.Dataset):
                         hdf5_path = os.path.join(self.path,ids,f'{ids}_{cell_choice}.hdf5')
                         with h5py.File(hdf5_path,"r") as h:
                             vv = h['train_img'][...]
+                            protein = np.expand_dims(vv[:,:,2],-1)
+                            image = np.dstack([vv[:,:,0], vv[:,:,1], vv[:,:,-1]])
+                            vv = image * (protein/255.)
                             if random.random() < self.aug_percent:
                                 vv = self.augmentation(image= vv)["image"]
                             else:
                                 vv = self.float_conv(image= vv)["image"]
-                            rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                            #print('this is rf ', rf)
-                            rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
-                            vv = np.dstack([vv,rf_np])
+                            
                             #print('this is vv shape ',vv.shape)
                             cell_list.append(vv)
 
@@ -267,364 +269,6 @@ class hpa_dataset_v1(data.Dataset):
         #return {'image' : torch.from_numpy(train_img), 'label' : torch.from_numpy(target_vec)}
         return {'image' : train_img, 'label' : target_vec}
 
-#here we are going to resample cells if the cell count is higher thatn the requirment
-class hpa_dataset_v2(data.Dataset):
-    def __init__(self, main_df, augmentation = None, path=None,  aug_per = 0.0, cells_used = 8, label_smoothing = False, l_alp = 0.3, is_validation = False):
-        self.main_df = main_df
-        self.aug_percent = aug_per
-        self.augmentation = augmentation
-        self.float_conv = albu.Compose([albu.ToFloat(max_value=255.,always_apply=True)])
-        self.label_col = [str(i) for i in range(19)]
-        self.cells_used = cells_used
-        self.path = path
-        self.is_validation = is_validation
-        self.label_smoothing = label_smoothing
-        self.l_alp = l_alp
-
-        #self.transform = transforms.Compose([transforms.ToTensor()])
-
-    def __len__(self):
-        return len(self.main_df)
-
-    def __getitem__(self, idx):
-        info = self.main_df.iloc[idx]
-        ids = info["ID"]
-
-        target_vec = info[self.label_col].values.astype(np.int)
-
-        # lets begin
-        cell_count = len(os.listdir(os.path.join(self.path,f'{ids}')))
-        
-        if not self.is_validation:
-
-            if cell_count == self.cells_used:
-                cell_list = []
-                for i in range(1, self.cells_used + 1):
-                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
-                    with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
-                        if random.random() < self.aug_percent:
-                            vv = self.augmentation(image= vv)["image"]
-                        else:
-                            vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
-                        #print('this is vv shape ',vv.shape)
-                        cell_list.append(vv)
-                train_img = np.array(cell_list)
-                        
-            elif cell_count > self.cells_used:#random downsample
-                #print('lead')
-                cell_list = []
-                for i in range(1, self.cells_used + 1):
-                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
-                    with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
-                        if random.random() < self.aug_percent:
-                            ##print('augmentation')
-                            vv = self.augmentation(image= vv)["image"]
-                        else:
-                            vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
-                        #print('this is vv shape ',vv.shape)
-                        cell_list.append(vv)
-                train_img = np.array(cell_list)
-
-            elif cell_count < self.cells_used:# add zero images
-                ##print('in the less class')
-                cell_list = []
-                cell_count_list = [i for i in range(1,cell_count+1)]
-                resampled_cell_list = [random.choice(cell_count_list) for i in range(self.cells_used)]
-                #print(resampled_cell_list)
-                for i in resampled_cell_list:
-                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
-                    with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
-                        if random.random() < self.aug_percent:
-                            vv = self.augmentation(image= vv)["image"]
-                        else:
-                            vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
-                        #print('this is vv shape ',vv.shape)
-                        cell_list.append(vv)
-                train_img = np.array(cell_list)
-                
-                #print('black ',target_vec)
-
-            #### label smoothening
-            if self.label_smoothing:
-                #print('sm')
-                #if target_vec.sum() == 1:
-                    #print('sum is one ',target_vec)
-                #    target_vec[-1] = 1
-                target_vec = (1. - self.l_alp) * target_vec + self.l_alp / 19
-                #target_vec[-1] = 1
-                #print(target_vec)
-        else:
-            if cell_count == self.cells_used:
-                cell_list = []
-                for i in range(1, self.cells_used + 1):
-                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
-                    with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
-                        vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
-                        #print('this is vv shape ',vv.shape)
-                        cell_list.append(vv)
-                train_img = np.array(cell_list)
-                        
-            elif cell_count > self.cells_used:#random downsample
-                
-                cell_list = []
-                for i in range(1, self.cells_used + 1):
-                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
-                    with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
-                        vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
-                        #print('this is vv shape ',vv.shape)
-                        cell_list.append(vv)
-                train_img = np.array(cell_list)
-
-            elif cell_count < self.cells_used:# add zero images
-                ##print('in the less class')
-                cell_list = []
-                
-            
-                count = 1
-                for i in range (1,self.cells_used+1):
-                    #print(i,count)
-                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{count}.hdf5')
-                    with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
-                        if random.random() < self.aug_percent:
-                            vv = self.augmentation(image= vv)["image"]
-                        else:
-                            vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
-                        #print('this is vv shape ',vv.shape)
-                        cell_list.append(vv)
-
-                    if i%cell_count ==0:
-                        count = 1
-                    else:
-                        count += 1
-                train_img = np.array(cell_list)
-
-            #if self.label_smoothing:
-                #print('sm')
-            #    if target_vec.sum() == 1:
-                    #print('sum is one ',target_vec)
-            #        target_vec[-1] = 0.7
-        #print('this is the shape ', train_img.shape)
-        #print("{} seconds".format(end_time-start_time))
-        #return {'image' : torch.from_numpy(train_img), 'label' : torch.from_numpy(target_vec)}
-        return {'image' : train_img, 'label' : target_vec}
-
-
-class hpa_dataset_v3(data.Dataset):
-    def __init__(self, main_df, axe_df, augmentation = None, path=None,  aug_per = 0.0, cells_used = 8, label_smoothing = False, l_alp = 0.3, is_validation = False):
-        self.main_df = main_df
-        self.axe_df = axe_df
-        self.aug_percent = aug_per
-        self.augmentation = augmentation
-        self.float_conv = albu.Compose([albu.ToFloat(max_value=255.,always_apply=True)])
-        self.label_col = [str(i) for i in range(19)]
-        self.cells_used = cells_used
-        self.path = path
-        self.is_validation = is_validation
-        self.label_smoothing = label_smoothing
-        self.l_alp = l_alp
-
-        #self.transform = transforms.Compose([transforms.ToTensor()])
-
-    def __len__(self):
-        return len(self.main_df)
-
-    def __getitem__(self, idx):
-        info = self.main_df.iloc[idx]
-        ids = info["ID"]
-
-        target_vec = info[self.label_col].values.astype(np.int)
-
-        # lets begin
-        cell_count = len(os.listdir(os.path.join(self.path,f'{ids}')))
-        
-        if not self.is_validation:
-
-            if cell_count == self.cells_used:
-                cell_list = []
-                for i in range(1, self.cells_used + 1):
-                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
-                    with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
-                        if random.random() < self.aug_percent:
-                            vv = self.augmentation(image= vv)["image"]
-                        else:
-                            vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
-                        #print('this is vv shape ',vv.shape)
-                        cell_list.append(vv)
-                train_img = np.array(cell_list)
-                        
-            elif cell_count > self.cells_used:#random downsample
-                #print('lead')
-
-                #if its multilabel
-                #there is still a problem with thos approach . with replace True . lower samples gets repeated
-                if target_vec.sum() > 1:
-                    #print('filtered')
-                    count_list = self.axe_df[self.axe_df['ID'].isin([ids])].groupby('cluster').apply(lambda x: x.sample(self.cells_used,replace=True))['count'].values
-                    #print(count_list)
-                    random.shuffle(count_list) 
-                    count_list = count_list[:self.cells_used] 
-                else:
-                    count_list = [i for i in range(1, self.cells_used + 1)]
-                    random.shuffle(count_list) 
-                    count_list = count_list[:self.cells_used]                 
-
-                
-                #print(len(count_list))
-                cell_list = []
-                for i in count_list:
-                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
-                    with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
-                        if random.random() < self.aug_percent:
-                            ##print('augmentation')
-                            vv = self.augmentation(image= vv)["image"]
-                        else:
-                            vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
-                        #print('this is vv shape ',vv.shape)
-                        cell_list.append(vv)
-                train_img = np.array(cell_list)
-
-            elif cell_count < self.cells_used:# add zero images
-                ##print('in the less class')
-                cell_list = []
-                cell_count_list = [i for i in range(1,cell_count+1)]
-                resampled_cell_list = [random.choice(cell_count_list) for i in range(self.cells_used)]
-                #print(resampled_cell_list)
-                for i in resampled_cell_list:
-                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
-                    with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
-                        if random.random() < self.aug_percent:
-                            vv = self.augmentation(image= vv)["image"]
-                        else:
-                            vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
-                        #print('this is vv shape ',vv.shape)
-                        cell_list.append(vv)
-                train_img = np.array(cell_list)
-                
-                #print('black ',target_vec)
-
-            #### label smoothening
-            if self.label_smoothing:
-                #print('sm')
-                #if target_vec.sum() == 1:
-                    #print('sum is one ',target_vec)
-                #    target_vec[-1] = 1
-                target_vec = (1. - self.l_alp) * target_vec + self.l_alp / 19
-                #target_vec[-1] = 1
-                #print(target_vec)
-        else:
-            if cell_count == self.cells_used:
-                cell_list = []
-                for i in range(1, self.cells_used + 1):
-                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
-                    with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
-                        vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
-                        #print('this is vv shape ',vv.shape)
-                        cell_list.append(vv)
-                train_img = np.array(cell_list)
-                        
-            elif cell_count > self.cells_used:#random downsample
-                
-                cell_list = []
-                for i in range(1, self.cells_used + 1):
-                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
-                    with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
-                        vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
-                        #print('this is vv shape ',vv.shape)
-                        cell_list.append(vv)
-                train_img = np.array(cell_list)
-
-            elif cell_count < self.cells_used:# add zero images
-                ##print('in the less class')
-                cell_list = []
-                
-            
-                count = 1
-                for i in range (1,self.cells_used+1):
-                    #print(i,count)
-                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{count}.hdf5')
-                    with h5py.File(hdf5_path,"r") as h:
-                        vv = h['train_img'][...]
-                        if random.random() < self.aug_percent:
-                            vv = self.augmentation(image= vv)["image"]
-                        else:
-                            vv = self.float_conv(image= vv)["image"]
-                        rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
-                        #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
-                        vv = np.dstack([vv,rf_np])
-                        #print('this is vv shape ',vv.shape)
-                        cell_list.append(vv)
-
-                    if i%cell_count ==0:
-                        count = 1
-                    else:
-                        count += 1
-                train_img = np.array(cell_list)
-
-            #if self.label_smoothing:
-                #print('sm')
-            #    if target_vec.sum() == 1:
-                    #print('sum is one ',target_vec)
-            #        target_vec[-1] = 0.7
-        #print('this is the shape ', train_img.shape)
-        #print("{} seconds".format(end_time-start_time))
-        #return {'image' : torch.from_numpy(train_img), 'label' : torch.from_numpy(target_vec)}
-        return {'image' : train_img, 'label' : target_vec}
 
 
 
@@ -637,7 +281,7 @@ def score_metrics(preds, labels):
     
 
     return {'AUROC':ROC_AUC_score,'F1_score':F1_score}
-
+'''
 class focal_loss(nn.Module):
     def __init__(self, alpha=0.25, gamma=2, if_sigmoid = False, device = None):
         super(focal_loss, self).__init__()
@@ -671,25 +315,7 @@ class focal_loss(nn.Module):
 
         F_loss = (at * (1.0 - pt) ** self.gamma) * (BCE_loss)
         return F_loss.mean()
-
-class PANNsLoss(nn.Module):
-    def __init__(self, device = None):
-        super().__init__()
-
-        self.bce = focal_loss(alpha=0.3, gamma=3, if_sigmoid = False , device = device)#nn.BCELoss(weight = torch.tensor(class_weights, requires_grad = False))
-
-    def forward(self, input, target):
-        input_ = input#["final_output"]
-        input_ = torch.where(torch.isnan(input_),
-                             torch.zeros_like(input_),
-                             input_)
-        input_ = torch.where(torch.isinf(input_),
-                             torch.zeros_like(input_),
-                             input_)
-
-        target = target.float()
-        #print(input_.shape)
-        return self.bce(input_.view(-1), target.view(-1))
+'''
 
 def lsep_loss_stable(input, target, average=True):
 
@@ -714,50 +340,7 @@ def lsep_loss_stable(input, target, average=True):
 
 
 
-class ImprovedPANNsLoss(nn.Module):
-    def __init__(self, output_key="logit", weights=[1, 0.5]):
-        super().__init__()
 
-        self.output_key = output_key
-        if output_key == "logit":
-            self.normal_loss = nn.BCEWithLogitsLoss()
-        else:
-            self.normal_loss = nn.BCELoss()
-
-        self.bce = nn.BCELoss()
-        self.weights = weights
-
-    def forward(self, input, target):
-        input_ = input[self.output_key]
-        target = target.float()
-
-        framewise_output = input["framewise_output"]
-        clipwise_output_with_max, _ = framewise_output.max(dim=1)
-
-        normal_loss = self.normal_loss(input_, target)
-        auxiliary_loss = self.bce(clipwise_output_with_max, target)
-
-        return self.weights[0] * normal_loss + self.weights[1] * auxiliary_loss
-'''
-class ImprovedPANNsLoss(nn.Module):
-    def __init__(self, output_key="logit", weights=[1, 0.5]):
-        super().__init__()
-        self.output_key = output_key
-        if output_key == "logit":
-            self.normal_loss = focal_loss(alpha=0.3, gamma=3,if_sigmoid = True)#nn.BCEWithLogitsLoss()
-        else:
-            self.normal_loss = focal_loss(alpha=0.3, gamma=3,if_sigmoid = False)#nn.BCELoss()
-        self.bce = focal_loss(alpha=0.3, gamma=3,if_sigmoid = False)#nn.BCELoss()
-        self.weights = weights
-    def forward(self, input, target):
-        input_ = input[self.output_key]
-        target = target.float()
-        framewise_output = input["framewise_output"]
-        clipwise_output_with_max, _ = framewise_output.max(dim=1)
-        normal_loss = self.normal_loss(input_.view(-1), target.view(-1))
-        auxiliary_loss = self.bce(clipwise_output_with_max.view(-1), target.view(-1))
-        return self.weights[0] * normal_loss + self.weights[1] * auxiliary_loss
-'''
 class focal_loss(nn.Module):
     def __init__(self, alpha=0.25, gamma=2, reduction = 'mean'):
         super(focal_loss, self).__init__()

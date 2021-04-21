@@ -184,20 +184,16 @@ class RandomAugMix(ImageOnlyTransform):
         self.alpha = alpha
     #[img_red, img_yellow, img_green, img_blue]
     def apply(self, img, **params):
-        if img.shape[-1] == 4:
-            #remove the protein layer , we will add it back agter augmentation
-            protein = img[:,:,2]
-            image = np.dstack([img[:,:,0], img[:,:,1], img[:,:,-1]])
-            #print('concat ',image.shape)
+        
         image = augment_and_mix(
-            image,
+            img,
             self.severity,
             self.width,
             self.depth,
             self.alpha
         )
         #print('image shape ',image.shape)
-        return np.dstack([image[:,:,0], image[:,:,1], protein, image[:,:,-1]]).astype(np.float32)
+        return image.astype(np.float32)
 
 
 

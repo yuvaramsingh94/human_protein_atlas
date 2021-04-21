@@ -1,7 +1,7 @@
 
 import torch
 from utils import set_seed, score_metrics, hpa_dataset_v1, focal_loss
-from model import HpaModel, HpaModel_1#, HpaModel_1, HpaModel_2
+from model import HpaModel_1#, HpaModel_1, HpaModel_2
 import pandas as pd
 import os
 import numpy as np
@@ -42,7 +42,7 @@ def train(model,train_dataloader,optimizer,criterion):
         X = X.to(device, dtype=torch.float)
         Y = Y.to(device, dtype=torch.float)
         X = X.permute(0,1,4,2,3)
-        #print(X[:,:,:4,:,:].min(), X.max())
+        #print(X.shape)
         
         optimizer.zero_grad(set_to_none=True)#better mode
         with torch.cuda.amp.autocast():
@@ -420,11 +420,11 @@ if __name__ == "__main__":
         [
             #'''
             RandomAugMix(p=.5),
-            albu.OneOf([
-                albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, border_mode = 1),
-                albu.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, border_mode=1),
-                albu.GridDistortion(num_steps=3, distort_limit=0.4, interpolation=1, border_mode=1),#num_steps=5, distort_limit=0.3
-            ], p=.5),
+            #albu.OneOf([
+            #    albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, border_mode = 1),
+            #    albu.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, border_mode=1),
+            #    albu.GridDistortion(num_steps=3, distort_limit=0.3, interpolation=1, border_mode=1),#num_steps=5, distort_limit=0.3
+            #], p=.5),
             
             #'''
             albu.HorizontalFlip(p=.5),
