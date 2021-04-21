@@ -298,7 +298,9 @@ def run(fold):
         print('using ',config['general']['model'])
         model = HpaModel_1(classes = int(config['general']['classes']), device = device, 
                             base_model_name = config['general']['pretrained_model'], 
-                            features = int(config['general']['feature']), pretrained = True,)
+                            features = int(config['general']['feature']), pretrained = True,
+                            spe_drop = float(config['general']['spe_drop']), 
+                            att_drop = float(config['general']['att_drop']))
         model = model.to(device)
     elif config['general']['model'] == 'HpaModel':
         print('using ',config['general']['model'])
