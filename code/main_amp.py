@@ -20,6 +20,9 @@ import random
 # https://github.com/albumentations-team/albumentations/blob/master/albumentations/augmentations/transforms.py
 import albumentations as albu
 from augmix import RandomAugMix
+from torch.backends import cudnn
+cudnn.benchmark = True
+
 
 
 
@@ -231,8 +234,9 @@ def run(fold):
 
     train_dataset = hpa_dataset_v1(main_df = train_df, path = DATA_PATH, augmentation = aug_fn, aug_per= 0.8, 
                                     cells_used = cells_used,label_smoothing = config.getboolean('general','label_smoothing'),
-                                     l_alp = 0.3)
-    valid_dataset = hpa_dataset_v1(main_df = valid_df, path = DATA_PATH, cells_used = cells_used, is_validation = True)
+                                     l_alp = 0.3, size =  int(config['general']['size']), cell_repetition = config.getboolean('general','cell_repetition'))
+    valid_dataset = hpa_dataset_v1(main_df = valid_df, path = DATA_PATH, cells_used = cells_used, is_validation = True,
+    size =  int(config['general']['size']), cell_repetition = config.getboolean('general','cell_repetition'))
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}"):
         os.mkdir(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}")
@@ -262,7 +266,7 @@ def run(fold):
         criterion = torch.nn.MSELoss().cuda(device=device)
     if config['general']['loss'] == 'focal':
         print('Using Focal loss')
-        criterion = focal_loss(alpha=0.25, gamma=2).cuda(device=device)
+        criterion = focal_loss(alpha=0.1, gamma=4).cuda(device=device)
 
 
     writer = SummaryWriter(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/log_dir")
@@ -300,7 +304,8 @@ def run(fold):
         print('using ',config['general']['model'])
         model = HpaModel(classes = int(config['general']['classes']), device = device, 
                             base_model_name = config['general']['pretrained_model'], 
-                            features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'))
+                            features = int(config['general']['feature']), pretrained = True, init_linear_comb = config.getboolean('general','init_linear_comb'),
+                            sub_units = int(config['general']['sub_units']), sub_drop = float(config['general']['sub_drop']))
         model = model.to(device)
     elif config['general']['model'] == 'HpaModel_2':
         print('using ',config['general']['model'])
@@ -414,11 +419,11 @@ if __name__ == "__main__":
     aug_fn = albu.Compose(
         [
             RandomAugMix(p=.5),
-            albu.OneOf([
-                albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, border_mode = 1),
-                albu.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, border_mode=1),
-                albu.GridDistortion(num_steps=5, distort_limit=0.3, interpolation=1, border_mode=1),
-            ], p=.7),
+            #albu.OneOf([
+            #    albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, border_mode = 1),
+            #    albu.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, border_mode=1),
+            #    albu.GridDistortion(num_steps=5, distort_limit=0.3, interpolation=1, border_mode=1),
+            #], p=.7),
             
             
             albu.HorizontalFlip(p=.5),
