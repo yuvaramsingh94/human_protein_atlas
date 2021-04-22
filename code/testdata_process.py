@@ -236,32 +236,32 @@ WORKERS = 15
 n_classes = 19
 SIZE = 256
 metric_use = 'loss'
-vees = 'v6_5_2_1_1'# actually v6_5_2_1_1
+vees = 'v6_6_2'# actually v6_5_2_1_1
 WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
 
 if not os.path.exists(WORK_LOCATION):
         os.mkdir(WORK_LOCATION)
 
-device = torch.device("cuda:0")
+device = torch.device("cuda:1")
 MODEL_PATH = f'weights/version_{vees}'
 n_classes = 19
 # config_v1.ini
 model_fold_0 = HpaModel_1(classes = n_classes, device = device, 
-                        base_model_name = 'resnet18', features = 512, pretrained = False)
+                        base_model_name = 'resnest50', features = 2048, pretrained = False)
 
 model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_1/model_{metric_use}_{0}.pth",map_location = device))
 model_fold_0.to(device)
 model_fold_0.eval()
 
 model_fold_1 = HpaModel_1(classes = n_classes, device = device, 
-                        base_model_name = 'resnet18', features = 512, pretrained = False)
+                        base_model_name = 'resnest50', features = 2048, pretrained = False)
 
 model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_1/model_{metric_use}_{1}.pth",map_location = device))
 model_fold_1.to(device)
 model_fold_1.eval()
 
 model_fold_2 = HpaModel_1(classes = n_classes, device = device, 
-                        base_model_name = 'resnet18', features = 512, pretrained = False)
+                        base_model_name = 'resnest50', features = 2048, pretrained = False)
 
 model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_1/model_{metric_use}_{2}.pth",map_location = device))
 model_fold_2.to(device)
