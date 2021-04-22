@@ -422,11 +422,11 @@ if __name__ == "__main__":
         [
             #'''
             RandomAugMix(p=.5),
-            albu.OneOf([
-                albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, border_mode = 1),
-                albu.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, border_mode=1),
-                albu.GridDistortion(num_steps=3, distort_limit=0.4, interpolation=1, border_mode=1),#num_steps=5, distort_limit=0.3
-            ], p=.5),
+            #albu.OneOf([
+            #    albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, border_mode = 1),
+            #    albu.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, border_mode=1),
+            #    albu.GridDistortion(num_steps=3, distort_limit=0.4, interpolation=1, border_mode=1),#num_steps=5, distort_limit=0.3
+            #], p=.5),
             
             #'''
             albu.HorizontalFlip(p=.5),
@@ -453,12 +453,4 @@ if __name__ == "__main__":
         print('This is the 3 rand no ',random.randint(2,50))
         run(fold)
 
-    oof_list = []
-    for fold in range(FOLDS):
-        val_o_df = val_oof(fold, metrics = 'loss')
-        
-        oof_list.append(val_o_df)
     
-    ## now we cancatenate the prediction datafram and save it in one 
-    oof_df = pd.concat(oof_list)
-    oof_df.to_csv(f"weights/{WEIGHT_SAVE}/oof_seed_{SEED}.csv", index = False)
