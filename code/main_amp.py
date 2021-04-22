@@ -1,7 +1,7 @@
 
 import torch
 from utils import set_seed, score_metrics, hpa_dataset_v1, focal_loss
-from model import HpaModel, HpaModel_1#, HpaModel_1, HpaModel_2
+from model import  HpaModel_1#, HpaModel_1, HpaModel_2
 import pandas as pd
 import os
 import numpy as np
@@ -300,7 +300,8 @@ def run(fold):
                             base_model_name = config['general']['pretrained_model'], 
                             features = int(config['general']['feature']), pretrained = True,
                             spe_drop = float(config['general']['spe_drop']), 
-                            att_drop = float(config['general']['att_drop']))
+                            att_drop = float(config['general']['att_drop']),
+                            hidden_dropout_prob = float(config['general']['hidden_dropout_prob']))
         model = model.to(device)
     elif config['general']['model'] == 'HpaModel':
         print('using ',config['general']['model'])
@@ -422,11 +423,11 @@ if __name__ == "__main__":
         [
             #'''
             RandomAugMix(p=.5),
-            albu.OneOf([
-                albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, border_mode = 1),
-                albu.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, border_mode=1),
-                albu.GridDistortion(num_steps=3, distort_limit=0.4, interpolation=1, border_mode=1),#num_steps=5, distort_limit=0.3
-            ], p=.5),
+            #albu.OneOf([
+            #    albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, border_mode = 1),
+            #    albu.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, border_mode=1),
+            #    albu.GridDistortion(num_steps=3, distort_limit=0.4, interpolation=1, border_mode=1),#num_steps=5, distort_limit=0.3
+            #], p=.5),
             
             #'''
             albu.HorizontalFlip(p=.5),

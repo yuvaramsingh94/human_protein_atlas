@@ -123,10 +123,11 @@ def run(trial):
     gamma = trial.suggest_int("gamma", 1, 5, log=True)
     spe_drop = trial.suggest_float("spe_drop", 0.2, 0.8, log=True)
     att_drop = trial.suggest_float("att_drop", 0.2, 0.8, log=True)
-
+    hidden_dropout_prob = trial.suggest_float("hidden_dropout_prob", 0.2, 0.8, log=True)
     model = HpaModel_1(classes = 19, device = device, 
-                            base_model_name = 'efficientnet-b4', 
-                            features = 1792, pretrained = True, spe_drop = spe_drop, att_drop = att_drop)
+                            base_model_name = 'resnet18', 
+                            features = 512, pretrained = True, spe_drop = spe_drop, att_drop = att_drop, 
+                            hidden_dropout_prob = hidden_dropout_prob)
     model = model.to(device)
 
     
@@ -169,11 +170,11 @@ if __name__ == "__main__":
     aug_fn = albu.Compose(
         [
             RandomAugMix(p=.5),
-            albu.OneOf([
-                albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, border_mode = 1),
-                albu.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, border_mode=1),
-                albu.GridDistortion(num_steps=3, distort_limit=0.4, interpolation=1, border_mode=1),#num_steps=5, distort_limit=0.3
-            ], p=.5),
+            #albu.OneOf([
+            #    albu.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.4, rotate_limit=40, border_mode = 1),
+            #    albu.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, border_mode=1),
+            #    albu.GridDistortion(num_steps=3, distort_limit=0.4, interpolation=1, border_mode=1),#num_steps=5, distort_limit=0.3
+            #], p=.5),
             
             
             albu.HorizontalFlip(p=.5),
