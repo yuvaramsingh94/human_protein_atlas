@@ -12,7 +12,7 @@ import imageio
 import os
 import h5py
 from skimage.transform import resize
-from model import HpaModel, HpaModel_1
+from model import HpaModel_1
 import torch
 import torch.utils.data as data
 import hpacellseg.cellsegmentator as cellsegmentator
@@ -236,7 +236,7 @@ WORKERS = 15
 n_classes = 19
 SIZE = 256
 metric_use = 'loss'
-vees = 'v6_5_2_1_1'# actually v6_5_2_1_1
+vees = 'v10'# actually v6_5_2_1_1
 WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
 
 if not os.path.exists(WORK_LOCATION):

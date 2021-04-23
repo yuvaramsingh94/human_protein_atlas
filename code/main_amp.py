@@ -1,6 +1,6 @@
 
 import torch
-from utils import set_seed, score_metrics, hpa_dataset_v1, focal_loss
+from utils import set_seed, score_metrics, hpa_dataset_v1, focal_loss, ImprovedPANNsLoss
 from model import  HpaModel_1#, HpaModel_1, HpaModel_2
 import pandas as pd
 import os
@@ -47,7 +47,7 @@ def train(model,train_dataloader,optimizer,criterion):
         optimizer.zero_grad(set_to_none=True)#better mode
         with torch.cuda.amp.autocast():
             prediction = model(X)
-            train_loss = criterion(prediction['final_output'], Y) 
+            train_loss = criterion(prediction, Y) 
         
         scaler.scale(train_loss).backward()
         
@@ -84,7 +84,7 @@ def validation(model,valid_dataloader,criterion):
             
             with torch.cuda.amp.autocast():
                 prediction = model(X)
-                valid_loss = criterion(prediction['final_output'], Y)
+                valid_loss = criterion(prediction, Y)
                 
             valid_loss_loop_list.append(valid_loss.detach().cpu().item())
 
@@ -261,13 +261,16 @@ def run(fold):
             criterion = nn.BCEWithLogitsLoss(weight=torch.tensor(class_weights, requires_grad = False)).cuda(device=device)
         else:
             criterion = nn.BCEWithLogitsLoss().cuda(device=device)
-    if config['general']['loss'] == 'MSE':
+    elif config['general']['loss'] == 'MSE':
         criterion = torch.nn.MSELoss().cuda(device=device)
-    if config['general']['loss'] == 'focal':
+    elif config['general']['loss'] == 'focal':
         print('Using Focal loss')
         ## basic alp 0.25 gam 2 
         criterion = focal_loss(alpha=0.1, gamma=5).cuda(device=device)
-
+    elif config['general']['loss'] == 'focal_improved':
+        print('Using focal_improved loss')
+        ## basic alp 0.25 gam 2 
+        criterion = ImprovedPANNsLoss(device = device).cuda(device=device)
 
     writer = SummaryWriter(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/log_dir")
 
