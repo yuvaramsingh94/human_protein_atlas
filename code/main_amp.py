@@ -1,6 +1,6 @@
 
 import torch
-from utils import set_seed, score_metrics, hpa_dataset_v1, focal_loss, ImprovedPANNsLoss
+from utils import set_seed, score_metrics, hpa_dataset_v1, focal_loss, ImprovedPANNsLoss, score_pr
 from model import  HpaModel_1#, HpaModel_1, HpaModel_2
 import pandas as pd
 import os
@@ -72,6 +72,8 @@ def validation(model,valid_dataloader,criterion):
     valid_loss_loop_list = []
     AUROC_loop_list = []
     F1_loop_list = []
+    labels = []
+    predictions = []
     with torch.no_grad():
         for data_t in tqdm(valid_dataloader):
 
@@ -88,25 +90,22 @@ def validation(model,valid_dataloader,criterion):
                 
             valid_loss_loop_list.append(valid_loss.detach().cpu().item())
 
-            scores = score_metrics(torch.sigmoid(prediction['final_output']), Y)
+            labels.append(Y.detach().cpu().numpy())
+            predictions.append(torch.sigmoid(prediction['final_output']).detach().cpu().numpy())
+            #scores = score_metrics(torch.sigmoid(prediction['final_output']), Y)
 
-            AUROC_loop_list.append(scores['AUROC']  )
-            F1_loop_list.append(scores['F1_score']  )
+            #AUROC_loop_list.append(scores['AUROC']  )
+            #F1_loop_list.append(scores['F1_score']  )
 
-
+    scores_val = score_pr(np.concatenate(predictions, axis = 0), np.concatenate(labels, axis = 0), n_classes = 19)
     valid_total_loss = np.array(valid_loss_loop_list)
     valid_total_loss = valid_total_loss.sum() / len(valid_total_loss)
 
-    AUROC_loop_list = np.array(AUROC_loop_list)
-    AUROC_loop_list = AUROC_loop_list.sum() / len(AUROC_loop_list)
-
-    F1_loop_list = np.array(F1_loop_list)
-    F1_loop_list = F1_loop_list.sum() / len(F1_loop_list)
 
 
     #valid_total_loss = 0.0
     print(f" \n valid loss : {valid_total_loss}")
-    return valid_total_loss, {'AUROC':AUROC_loop_list,'F1_score':F1_loop_list}
+    return valid_total_loss, scores_val
 
 def val_oof(fold, metrics):
     
@@ -330,26 +329,46 @@ def run(fold):
     # Scheduler
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCH)
 
-    best_val_AUROC = 0.0
-    best_val_F1_score = 0.0
+    
     best_val_loss = 10000.0
     improvement_tracker = 0
     for epoch in range (EPOCH):
         train_loss = train(model,train_dataloader,optimizer,criterion)
-        val_loss,val_scores = validation(model,valid_dataloader,criterion)
+        val_loss,scores_val = validation(model,valid_dataloader,criterion)
+        
+        '''
+        precision_ = scores_val['precision'] 
+        recall_ = scores_val['recall']
+        auc_pr_ = scores_val['auc']
+        
+        val_precision = dict()
+        val_recall = dict()
+        val_auc_pr = dict()
+
+        for nk in range(int(config['general']['classes'])):
+
+            val_precision[nk] = precision_[nk]
+            val_recall[nk] = recall_[nk]
+            val_auc_pr[nk] = auc_pr_[nk]
+        '''
         scheduler.step()
         print('EPOCH ',epoch)
 
         writer.add_scalar('Loss/train', train_loss, epoch)
         writer.add_scalar('Loss/valid', val_loss, epoch)
 
-        writer.add_scalar('AUROC/valid', val_scores['AUROC'], epoch)
-        writer.add_scalar('F1_score/valid', val_scores['F1_score'], epoch)
-
+        #writer.add_scalar('AUROC/valid', val_scores['AUROC'], epoch)
+        #writer.add_scalar('F1_score/valid', val_scores['F1_score'], epoch)
+        #print(scores_val['precision'])
+        #writer.add_scalars('precision', scores_val['precision'] , epoch)
+        #writer.add_scalars('recall', scores_val['recall'], epoch)
+        writer.add_scalars('auc', scores_val['auc'], epoch)
+        writer.add_scalars('avg_precision', scores_val['avg_precision'], epoch)
+        
         for param_group in optimizer.param_groups:
             #print('this is param_group ',param_group)
             writer.add_scalar('LR',param_group["lr"],epoch)
-        
+        '''
         if val_scores['AUROC'] > best_val_AUROC:
             print(f"saving as we have {val_scores['AUROC']} val_AUROC which is improvement over {best_val_AUROC}")
             best_val_AUROC = val_scores['AUROC']
@@ -364,7 +383,9 @@ def run(fold):
             
             #torch.save( model.state_dict(),
             #            f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_F1_{fold}.pth",)
-        
+        '''
+        torch.save( model.state_dict(),
+                        f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_epoch_{epoch}.pth",)
         if val_loss < best_val_loss:
             improvement_tracker = 0
             print(f"saving as we have {val_loss} val_loss which is improvement over {best_val_loss}")
@@ -372,7 +393,7 @@ def run(fold):
             best_val_loss = val_loss
             
             torch.save( model.state_dict(),
-                        f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_loss_{fold}.pth",)
+                        f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}best_loss_{fold}.pth",)
         else:
             improvement_tracker += 1
         print('improvement_tracker ',improvement_tracker)

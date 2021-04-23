@@ -5,7 +5,7 @@ import pandas as pd
 import h5py
 import torch
 import torch.utils.data as data
-from sklearn.metrics import f1_score, roc_auc_score
+from sklearn.metrics import f1_score, roc_auc_score, precision_recall_curve, auc, average_precision_score
 import time
 import torch.nn as nn
 import torch.nn.functional as F
@@ -638,6 +638,26 @@ def score_metrics(preds, labels):
 
     return {'AUROC':ROC_AUC_score,'F1_score':F1_score}
 
+
+
+
+def score_pr(preds, labels, n_classes = 19):
+    precision = dict()
+    recall = dict()
+    auc_value = dict()
+    avg_precision = dict()
+    for i in range(n_classes):
+        #print('label shape ', labels[:,i].shape)
+        precision[str(i)], recall[str(i)], _ = precision_recall_curve(labels[:,i], preds[:,i])
+        avg_precision[str(i)] = average_precision_score(labels[:,i], preds[:,i])
+    for i in range(n_classes):
+        #print(i)
+        try:
+            auc_value[str(i)] = auc(precision[i], recall[i])
+        except:
+            auc_value[str(i)] = 0.0
+
+    return {'precision':precision,'recall':recall, 'auc':auc_value, 'avg_precision':avg_precision}
 
 
 def lsep_loss_stable(input, target, average=True):
