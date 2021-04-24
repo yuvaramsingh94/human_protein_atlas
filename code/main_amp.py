@@ -57,11 +57,11 @@ def train(model,train_dataloader,optimizer,criterion):
         #train_loss.backward()
         #optimizer.step()
         #print(model.init_layer.weight)
-        train_loss_loop_list.append(train_loss.item())
+        #train_loss_loop_list.append(train_loss.item())
 
-    train_total_loss = np.array(train_loss_loop_list)
-    train_total_loss = train_total_loss.sum() / len(train_total_loss)
-
+    #train_total_loss = np.array(train_loss_loop_list)
+    #train_total_loss = train_total_loss.sum() / len(train_total_loss)
+    train_total_loss = 0.0
     print(f" \n train loss : {train_total_loss}")
     return train_total_loss
 
@@ -216,11 +216,11 @@ def run(fold):
     ## here we will upsample class 15 and 11 to see what it does to me 
     print('This is training shape ',train_df.shape)
     if config.getboolean('general','is_resample'):
-        print('15 class ',train_df[train_df['15'] == 1].shape)
+        #print('15 class ',train_df[train_df['15'] == 1].shape)
         print('11 class ',train_df[train_df['11'] == 1].shape)
-        train_15 = train_df[train_df['15'] == 1].sample(n=500, replace=True, random_state=1)
-        train_11 = train_df[train_df['11'] == 1].sample(n=50, replace=True, random_state=1)
-        train_df = pd.concat([train_df,train_15,train_11])
+        #train_15 = train_df[train_df['15'] == 1].sample(n=500, replace=True, random_state=1)
+        train_11 = train_df[train_df['11'] == 1].sample(n=100, replace=True, random_state=1)
+        train_df = pd.concat([train_df,train_11])
         print('This is resampled training shape ',train_df.shape)
     else:
         print("NO RESAMPLING")
@@ -362,9 +362,14 @@ def run(fold):
         #print(scores_val['precision'])
         #writer.add_scalars('precision', scores_val['precision'] , epoch)
         #writer.add_scalars('recall', scores_val['recall'], epoch)
-        writer.add_scalars('auc', scores_val['auc'], epoch)
+        #writer.add_scalars('auc', scores_val['auc'], epoch)
+        avg_pr = []
+        for ig in range(19):
+            avg_pr.append(scores_val['avg_precision'][str(ig)])
+        avg_pr = np.array(avg_pr)
+        print('mean ',avg_pr.mean())
         writer.add_scalars('avg_precision', scores_val['avg_precision'], epoch)
-        
+        writer.add_scalar('mean_AP', avg_pr.mean(), epoch)
         for param_group in optimizer.param_groups:
             #print('this is param_group ',param_group)
             writer.add_scalar('LR',param_group["lr"],epoch)
@@ -393,12 +398,12 @@ def run(fold):
             best_val_loss = val_loss
             
             torch.save( model.state_dict(),
-                        f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}best_loss_{fold}.pth",)
+                        f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/best_loss_{fold}.pth",)
         else:
             improvement_tracker += 1
         print('improvement_tracker ',improvement_tracker)
         #early stoping
-        if improvement_tracker > 5:# if we are not improving for more than 6 
+        if improvement_tracker > 15:# if we are not improving for more than 6 
             break
 
     ### now we do the master check once . it should be slow so we do it once
@@ -406,7 +411,7 @@ def run(fold):
     del model
     gc.collect()
 
-    writer.add_text('description',f'Here the  AUROC {best_val_AUROC} F1 {best_val_F1_score} loss {best_val_loss}',epoch)
+    writer.add_text('description',f'Here the loss {best_val_loss}',epoch)
     writer.close()
     
     
@@ -479,7 +484,7 @@ if __name__ == "__main__":
         run(fold)
 
     oof_list = []
-    for fold in range(FOLDS):
+    for fold in range(1,FOLDS):
         val_o_df = val_oof(fold, metrics = 'loss')
         
         oof_list.append(val_o_df)
