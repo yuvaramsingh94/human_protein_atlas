@@ -236,7 +236,7 @@ WORKERS = 15
 n_classes = 19
 SIZE = 256
 metric_use = 'loss'
-vees = 'v10'# actually v6_5_2_1_1
+vees = 'v10_2'# actually v6_5_2_1_1
 WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
 
 if not os.path.exists(WORK_LOCATION):
@@ -248,22 +248,22 @@ n_classes = 19
 # config_v1.ini
 model_fold_0 = HpaModel_1(classes = n_classes, device = device, 
                         base_model_name = 'resnet18', features = 512, pretrained = False)
-
-model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_1/model_{metric_use}_{0}.pth",map_location = device))
+#work/ddsm/hpa/human_protein_atlas/weights/version_v10_2/fold_0_seed_1/model_epoch_28.pth
+model_fold_0.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{0}_seed_1/model_epoch_28.pth",map_location = device))
 model_fold_0.to(device)
 model_fold_0.eval()
 
 model_fold_1 = HpaModel_1(classes = n_classes, device = device, 
                         base_model_name = 'resnet18', features = 512, pretrained = False)
 
-model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_1/model_{metric_use}_{1}.pth",map_location = device))
+model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_1/model_epoch_24.pth",map_location = device))
 model_fold_1.to(device)
 model_fold_1.eval()
 
 model_fold_2 = HpaModel_1(classes = n_classes, device = device, 
                         base_model_name = 'resnet18', features = 512, pretrained = False)
 
-model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_1/model_{metric_use}_{2}.pth",map_location = device))
+model_fold_2.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{2}_seed_1/model_epoch_27.pth",map_location = device))
 model_fold_2.to(device)
 model_fold_2.eval()
 
