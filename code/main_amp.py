@@ -111,7 +111,8 @@ def val_oof(fold, metrics):
         print('using ',config['general']['model'])
         model = HpaModel_1(classes = int(config['general']['classes']), device = device, 
                             base_model_name = config['general']['pretrained_model'], 
-                            features = int(config['general']['feature']), pretrained = True,)
+                            features = int(config['general']['feature']),
+                            feature_red= int(config['general']['feature_red']),pretrained = True,)
         model = model.to(device)
     elif config['general']['model'] == 'HpaModel':
         print('using ',config['general']['model'])

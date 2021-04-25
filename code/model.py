@@ -255,13 +255,14 @@ class attention_encoding(nn.Module):
 
 #adding batchnorm to the initial layer with no bias for the conv layer
 class HpaModel_1(nn.Module):
-    def __init__(self, classes, device, base_model_name, pretrained, features, spe_drop = 0.5, hidden_dropout_prob = 0.5, att_drop = 0.5):
+    def __init__(self, classes, device, base_model_name, pretrained, features, feature_red=512, spe_drop = 0.5, hidden_dropout_prob = 0.5, att_drop = 0.5):
         super(HpaModel_1, self).__init__()
         self.base_model_name = base_model_name
         self.classes = classes
         self.features = features
         self.spe_drop = spe_drop
         self.att_drop = att_drop
+        self.feature_red = feature_red
         mean_list = [0.083170892049318, 0.08627143702844145, 0.05734662013795027, 0.06582942296076659,0.0]
         std_list = [0.13561066140407024, 0.13301454127989584, 0.09142918497144226, 0.15651865713966945,1.]
         self.transform=transforms.Compose([Normalize(mean= mean_list,
@@ -282,12 +283,14 @@ class HpaModel_1(nn.Module):
             self.model = nn.Sequential(*layers)
         self.init_layer = nn.Conv2d(in_channels=5, out_channels=3, kernel_size=1, stride=1,bias= False)
         self.batch_norm_init = nn.BatchNorm2d(3)
-        self.attention_encoding = attention_encoding(embedding_dims = self.features, num_patches = 64, hidden_size = self.features, 
+        self.down_conv = nn.Conv2d(in_channels=self.features, out_channels=self.feature_red, kernel_size=1, stride=1,bias= False)
+        self.batch_norm_down = nn.BatchNorm2d(self.feature_red)
+        self.attention_encoding = attention_encoding(embedding_dims = self.feature_red, num_patches = 64, hidden_size = self.feature_red, 
                                     hidden_dropout_prob = hidden_dropout_prob, attention_heads = 8, is_first = True)
-        self.att_mlp_norm = nn.LayerNorm(self.features)
+        self.att_mlp_norm = nn.LayerNorm(self.feature_red)
 
-        self.fc1 = nn.Linear(self.features, self.features, bias=True)
-        self.att_block = AttBlock(self.features, classes, activation="linear")
+        self.fc1 = nn.Linear(self.feature_red, self.feature_red, bias=True)
+        self.att_block = AttBlock(self.feature_red, classes, activation="linear")
 
         #self.backbone = nn.ModuleList([self.init_layer, self.model])
         #self.fc_attention = nn.ModuleList([self.fc1, self.att_block])
@@ -297,7 +300,7 @@ class HpaModel_1(nn.Module):
         self.att_block = AttBlock(self.features, self.classes, activation="linear")
 
     def trainable_parameters(self):
-        return (list(nn.ModuleList([self.init_layer, self.batch_norm_init, self.model, self.attention_encoding,
+        return (list(nn.ModuleList([self.init_layer, self.batch_norm_init, self.down_conv, self.batch_norm_down, self.model, self.attention_encoding,
                     self.att_mlp_norm, self.fc1, self.att_block]).parameters()), 
                 list(nn.ModuleList([self.fc1, self.att_block]).parameters()))
     
@@ -322,7 +325,7 @@ class HpaModel_1(nn.Module):
         #    spe = self.model.extract_features(c_in)
         #else:
         spe = self.model(c_in)
-        
+        spe = F.relu(self.batch_norm_down(self.down_conv(spe)))
         # attention pooling
         #print('spe shape ',spe.shape)
         spe = self.attention_encoding(spe)
