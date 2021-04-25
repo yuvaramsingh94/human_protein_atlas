@@ -8,15 +8,14 @@ n_classes = 19
 
 SCALING = 2.
 
-WORK_LOCATION = f'data/submissions/test_{"v6_2_1"}_{metric_use}/'
+WORK_LOCATION = f'data/submissions/test_{"v6_6"}_{metric_use}/'
 test_enc_df = pd.read_csv(os.path.join(WORK_LOCATION,'stage_1.csv'))
-WORK_LOCATION = f'data/submissions/test_{"v6_4"}_{metric_use}/'   #effb0 one
+WORK_LOCATION = f'data/submissions/test_{"v6_6_3"}_{metric_use}/'   #effb0 one
 test_enc_df_1 = pd.read_csv(os.path.join(WORK_LOCATION,'stage_1.csv'))
-WORK_LOCATION = f'data/submissions/test_{"v2_3_10_1"}_{metric_use}/'   #effb0 one
+WORK_LOCATION = f'data/submissions/test_{"v6_6_2"}_{metric_use}/'   #effb0 one
 test_enc_df_2 = pd.read_csv(os.path.join(WORK_LOCATION,'stage_1.csv'))
 
 
-WORK_LOCATION = f'data/submissions/test_ensamble_2/'
 
 #print(test_enc_df.head())
 
@@ -67,8 +66,8 @@ sub = pd.read_csv('data/sample_submission.csv')
 sub = sub.drop(['PredictionString'],axis=1)
 sub = sub.merge(sub_stage_2_df, on='ID')
 
-WORK_LOCATION = f'data/submissions/test_ensamble_3/'
+WORK_LOCATION = f'data/submissions/test_ensamble_4/'
 
 if not os.path.exists(WORK_LOCATION):
         os.mkdir(WORK_LOCATION)
-sub.to_csv(os.path.join(WORK_LOCATION,'submission_ensamble_3.csv'), index=False)
+sub.to_csv(os.path.join(WORK_LOCATION,'submission_ensamble_4.csv'), index=False)
