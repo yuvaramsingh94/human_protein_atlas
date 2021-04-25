@@ -1,6 +1,6 @@
 
 import torch
-from utils import set_seed, score_metrics, hpa_dataset_v1, focal_loss
+from utils import set_seed, score_metrics, hpa_dataset_v1, focal_loss, ImprovedPANNsLoss, score_pr
 from model import HpaModel, HpaModel_1#, HpaModel_1, HpaModel_2
 import pandas as pd
 import os
@@ -47,7 +47,7 @@ def train(model,train_dataloader,optimizer,criterion):
         optimizer.zero_grad(set_to_none=True)#better mode
         with torch.cuda.amp.autocast():
             prediction = model(X)
-            train_loss = criterion(prediction['final_output'], Y) 
+            train_loss = criterion(prediction, Y) 
         
         scaler.scale(train_loss).backward()
         
@@ -57,11 +57,11 @@ def train(model,train_dataloader,optimizer,criterion):
         #train_loss.backward()
         #optimizer.step()
         #print(model.init_layer.weight)
-        train_loss_loop_list.append(train_loss.item())
+        #train_loss_loop_list.append(train_loss.item())
 
-    train_total_loss = np.array(train_loss_loop_list)
-    train_total_loss = train_total_loss.sum() / len(train_total_loss)
-
+    #train_total_loss = np.array(train_loss_loop_list)
+    #train_total_loss = train_total_loss.sum() / len(train_total_loss)
+    train_total_loss = 0.
     print(f" \n train loss : {train_total_loss}")
     return train_total_loss
 
@@ -72,6 +72,8 @@ def validation(model,valid_dataloader,criterion):
     valid_loss_loop_list = []
     AUROC_loop_list = []
     F1_loop_list = []
+    labels = []
+    predictions = []
     with torch.no_grad():
         for data_t in tqdm(valid_dataloader):
 
@@ -84,29 +86,23 @@ def validation(model,valid_dataloader,criterion):
             
             with torch.cuda.amp.autocast():
                 prediction = model(X)
-                valid_loss = criterion(prediction['final_output'], Y)
+                valid_loss = criterion(prediction, Y)
                 
             valid_loss_loop_list.append(valid_loss.detach().cpu().item())
 
-            scores = score_metrics(torch.sigmoid(prediction['final_output']), Y)
+            labels.append(Y.detach().cpu().numpy())
+            predictions.append(torch.sigmoid(prediction['final_output']).detach().cpu().numpy())
+            #scores = score_metrics(torch.sigmoid(prediction['final_output']), Y)
 
-            AUROC_loop_list.append(scores['AUROC']  )
-            F1_loop_list.append(scores['F1_score']  )
+            #AUROC_loop_list.append(scores['AUROC']  )
+            #F1_loop_list.append(scores['F1_score']  )
 
-
+    scores_val = score_pr(np.concatenate(predictions, axis = 0), np.concatenate(labels, axis = 0), n_classes = 19)
     valid_total_loss = np.array(valid_loss_loop_list)
     valid_total_loss = valid_total_loss.sum() / len(valid_total_loss)
-
-    AUROC_loop_list = np.array(AUROC_loop_list)
-    AUROC_loop_list = AUROC_loop_list.sum() / len(AUROC_loop_list)
-
-    F1_loop_list = np.array(F1_loop_list)
-    F1_loop_list = F1_loop_list.sum() / len(F1_loop_list)
-
-
     #valid_total_loss = 0.0
     print(f" \n valid loss : {valid_total_loss}")
-    return valid_total_loss, {'AUROC':AUROC_loop_list,'F1_score':F1_loop_list}
+    return valid_total_loss, scores_val
 
 def val_oof(fold, metrics):
     
@@ -217,11 +213,11 @@ def run(fold):
     ## here we will upsample class 15 and 11 to see what it does to me 
     print('This is training shape ',train_df.shape)
     if config.getboolean('general','is_resample'):
-        print('15 class ',train_df[train_df['15'] == 1].shape)
+        #print('15 class ',train_df[train_df['15'] == 1].shape)
         print('11 class ',train_df[train_df['11'] == 1].shape)
-        train_15 = train_df[train_df['15'] == 1].sample(n=500, replace=True, random_state=1)
-        train_11 = train_df[train_df['11'] == 1].sample(n=50, replace=True, random_state=1)
-        train_df = pd.concat([train_df,train_15,train_11])
+        #train_15 = train_df[train_df['15'] == 1].sample(n=500, replace=True, random_state=1)
+        train_11 = train_df[train_df['11'] == 1].sample(n=150, replace=True, random_state=1)
+        train_df = pd.concat([train_df,train_11])
         print('This is resampled training shape ',train_df.shape)
     else:
         print("NO RESAMPLING")
@@ -261,12 +257,17 @@ def run(fold):
             criterion = nn.BCEWithLogitsLoss(weight=torch.tensor(class_weights, requires_grad = False)).cuda(device=device)
         else:
             criterion = nn.BCEWithLogitsLoss().cuda(device=device)
-    if config['general']['loss'] == 'MSE':
+    elif config['general']['loss'] == 'MSE':
         criterion = torch.nn.MSELoss().cuda(device=device)
-    if config['general']['loss'] == 'focal':
+    elif config['general']['loss'] == 'focal':
         print('Using Focal loss')
         ## basic alp 0.25 gam 2 
         criterion = focal_loss(alpha=0.1, gamma=5).cuda(device=device)
+    elif config['general']['loss'] == 'focal_improved':
+        print('Using focal_improved loss')
+        ## basic alp 0.25 gam 2 
+        criterion = ImprovedPANNsLoss(device = device).cuda(device=device)
+
 
 
     writer = SummaryWriter(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/log_dir")
@@ -300,7 +301,8 @@ def run(fold):
                             base_model_name = config['general']['pretrained_model'], 
                             features = int(config['general']['feature']), pretrained = True,
                             spe_drop = float(config['general']['spe_drop']), 
-                            att_drop = float(config['general']['att_drop']))
+                            att_drop = float(config['general']['att_drop']),
+                            hidden_dropout_prob = float(config['general']['hidden_dropout_prob']))
         model = model.to(device)
     elif config['general']['model'] == 'HpaModel':
         print('using ',config['general']['model'])
@@ -326,26 +328,29 @@ def run(fold):
     # Scheduler
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCH)
 
-    best_val_AUROC = 0.0
-    best_val_F1_score = 0.0
     best_val_loss = 10000.0
     improvement_tracker = 0
     for epoch in range (EPOCH):
         train_loss = train(model,train_dataloader,optimizer,criterion)
-        val_loss,val_scores = validation(model,valid_dataloader,criterion)
+        val_loss,scores_val = validation(model,valid_dataloader,criterion)
         scheduler.step()
         print('EPOCH ',epoch)
 
         writer.add_scalar('Loss/train', train_loss, epoch)
         writer.add_scalar('Loss/valid', val_loss, epoch)
 
-        writer.add_scalar('AUROC/valid', val_scores['AUROC'], epoch)
-        writer.add_scalar('F1_score/valid', val_scores['F1_score'], epoch)
+        avg_pr = []
+        for ig in range(19):
+            avg_pr.append(scores_val['avg_precision'][str(ig)])
+        avg_pr = np.array(avg_pr)
+        print('mean ',avg_pr.mean())
+        writer.add_scalars('avg_precision', scores_val['avg_precision'], epoch)
+        writer.add_scalar('mean_AP', avg_pr.mean(), epoch)
 
         for param_group in optimizer.param_groups:
             #print('this is param_group ',param_group)
             writer.add_scalar('LR',param_group["lr"],epoch)
-        
+        '''
         if val_scores['AUROC'] > best_val_AUROC:
             print(f"saving as we have {val_scores['AUROC']} val_AUROC which is improvement over {best_val_AUROC}")
             best_val_AUROC = val_scores['AUROC']
@@ -360,7 +365,7 @@ def run(fold):
             
             #torch.save( model.state_dict(),
             #            f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_F1_{fold}.pth",)
-        
+        '''
         if val_loss < best_val_loss:
             improvement_tracker = 0
             print(f"saving as we have {val_loss} val_loss which is improvement over {best_val_loss}")
@@ -381,7 +386,7 @@ def run(fold):
     del model
     gc.collect()
 
-    writer.add_text('description',f'Here the  AUROC {best_val_AUROC} F1 {best_val_F1_score} loss {best_val_loss}',epoch)
+    writer.add_text('description',f'Here the loss {best_val_loss}',epoch)
     writer.close()
     
     
