@@ -39,6 +39,7 @@ def train(model,train_dataloader,optimizer,criterion):
     train_loss_loop_list = []
     for data_t in tqdm(train_dataloader):
         X, Y = data_t['image'],data_t['label']
+
         X = X.to(device, dtype=torch.float)
         Y = Y.to(device, dtype=torch.float)
         X = X.permute(0,1,4,2,3)
@@ -378,7 +379,7 @@ def run(fold):
             improvement_tracker += 1
         print('improvement_tracker ',improvement_tracker)
         #early stoping
-        if improvement_tracker > 5:# if we are not improving for more than 6 
+        if improvement_tracker > 4:# if we are not improving for more than 6 
             break
 
     ### now we do the master check once . it should be slow so we do it once

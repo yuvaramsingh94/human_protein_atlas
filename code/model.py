@@ -235,8 +235,8 @@ class attention_encoding(nn.Module):
         self.is_first = is_first
 
     def forward(self, s0):
-        if self.is_first:## only embed for the first layer 
-            s0 = self.vit_emb(s0)
+        #if self.is_first:## only embed for the first layer 
+        s0 = self.vit_emb(s0)
         x = self.emb_norm(s0)
         query_ = self.query(x).permute(1,0,2)
         key_ = self.key(x).permute(1,0,2)
@@ -301,20 +301,7 @@ class HpaModel_1(nn.Module):
                     self.att_mlp_norm, self.fc1, self.att_block]).parameters()), 
                 list(nn.ModuleList([self.fc1, self.att_block]).parameters()))
     
-    
-    def extract_features(self, x):
-        batch_size, cells, C, H, W = x.size()
-        c_in = self.transform(x.view(batch_size * cells, C, H, W))
-        #print('input c_in ',c_in.shape)
-        c_in = F.relu(self.batch_norm_init(self.init_layer(c_in)))
-        #print('init layer c_in ',c_in.shape)
-        if 'efficientnet' in self.base_model_name:
-            spe = self.model.extract_features(c_in)
-        else:
-            spe = self.model(c_in)
-        spe = F.avg_pool2d(spe, spe.size()[2:]).squeeze()
 
-        return spe.contiguous().view(batch_size, cells, -1)
     
     def attention_section(self,spe):
         spe = F.relu(self.fc1(F.dropout(spe, p=self.spe_drop, training=self.training))).permute(0,2,1)
@@ -330,10 +317,12 @@ class HpaModel_1(nn.Module):
         #print('input c_in ',c_in.shape)
         c_in = F.relu(self.batch_norm_init(self.init_layer(c_in)))
         #print('init layer c_in ',c_in.shape)
-        if 'efficientnet' in self.base_model_name:
-            spe = self.model.extract_features(c_in)
-        else:
-            spe = self.model(c_in)
+
+        #if 'efficientnet' in self.base_model_name:
+        #    spe = self.model.extract_features(c_in)
+        #else:
+        spe = self.model(c_in)
+        
         # attention pooling
         #print('spe shape ',spe.shape)
         spe = self.attention_encoding(spe)
