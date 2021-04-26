@@ -209,6 +209,7 @@ WORKERS = 15
 n_classes = 19
 metric_use = 'loss'
 vees = 'v2_5'
+SIZE = 256
 WORK_LOCATION = f'data/submissions/test_{vees}_{metric_use}/'
 
 
@@ -289,13 +290,13 @@ class hpa_dataset(data.Dataset):
             vv = h['test_img'][...]
             rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
             #print('this is rf ', rf)
-            rf_np = np.full(shape = (224,224), fill_value = rf)
+            rf_np = np.full(shape = (SIZE,SIZE), fill_value = rf)
             vv = np.dstack([vv,rf_np])
         return { 'image':vv}
 
-test_enc_df = pd.read_csv('data/test_enc_v5.csv')#[:10]
+test_enc_df = pd.read_csv('data/test_enc_v7.csv')#[:10]
 
-test_dataset = hpa_dataset(main_df = test_enc_df, path = 'data/test_h5_224_40000/')
+test_dataset = hpa_dataset(main_df = test_enc_df, path = 'data/test_h5_256_40000/')
 test_dataloader = data.DataLoader(
         test_dataset,
         batch_size=BATCH_SIZE,
