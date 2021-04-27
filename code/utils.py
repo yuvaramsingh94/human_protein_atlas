@@ -647,7 +647,7 @@ def score_pr(preds, labels, n_classes = 19):
     for i in range(n_classes):
         #print('label shape ', labels[:,i].shape)
         #precision[str(i)], recall[str(i)], _ = precision_recall_curve(labels[:,i], preds[:,i])
-        avg_precision[str(i)] = average_precision_score(labels[:,i], preds[:,i])
+        avg_precision[str(i)] = average_precision_score(np.clip(labels[:,i],0.0,1.0), np.clip(preds[:,i],0.0,1.0))
     '''
     for i in range(n_classes):
         #print(i)
