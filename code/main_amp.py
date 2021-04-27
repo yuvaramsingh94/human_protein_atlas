@@ -403,7 +403,7 @@ def run(fold):
             improvement_tracker += 1
         print('improvement_tracker ',improvement_tracker)
         #early stoping
-        if improvement_tracker > 15:# if we are not improving for more than 6 
+        if improvement_tracker > 5:# if we are not improving for more than 6 
             break
 
     ### now we do the master check once . it should be slow so we do it once

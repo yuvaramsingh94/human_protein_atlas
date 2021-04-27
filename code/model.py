@@ -139,8 +139,10 @@ class ViTEmbeddings(nn.Module):
 class attention_encoding(nn.Module):
     def __init__(self, embedding_dims, num_patches, hidden_size, hidden_dropout_prob, attention_heads, is_first = True):
         super(attention_encoding, self).__init__()
-        self.vit_emb = ViTEmbeddings(num_patches = num_patches, 
-                        hidden_size = hidden_size, hidden_dropout_prob = hidden_dropout_prob)
+        self.is_first = is_first
+        if self.is_first:
+            self.vit_emb = ViTEmbeddings(num_patches = num_patches, 
+                            hidden_size = hidden_size, hidden_dropout_prob = hidden_dropout_prob)
         self.embedding_dims = embedding_dims
         self.emb_norm = nn.LayerNorm(self.embedding_dims)
         #self.emb_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
@@ -149,12 +151,12 @@ class attention_encoding(nn.Module):
         self.value = nn.Linear(self.embedding_dims, self.embedding_dims)
 
         self.multi_head_atten_layer = nn.MultiheadAttention(embed_dim = self.embedding_dims, num_heads = attention_heads,
-                                dropout=hidden_dropout_prob, bias=True, add_bias_kv=False, 
-                                add_zero_attn=False, kdim=None, vdim=None)
+                                        dropout=hidden_dropout_prob, bias=True, add_bias_kv=False, 
+                                        add_zero_attn=False, kdim=None, vdim=None)
         self.attention_norm = nn.LayerNorm(self.embedding_dims)
         self.mlp = nn.Linear(self.embedding_dims, self.embedding_dims)
         #self.mlp_norm = nn.LayerNorm(self.embedding_dims)
-        self.is_first = is_first
+        
 
     def forward(self, s0):
         if self.is_first:## only embed for the first layer 
@@ -206,6 +208,14 @@ class HpaModel_1(nn.Module):
 
         self.attention_encoding = attention_encoding(embedding_dims = self.features, num_patches = 64, hidden_size = self.features, 
                                     hidden_dropout_prob = hidden_dropout_prob, attention_heads = 8, is_first = True)
+        
+
+        self.attention_encoding_1 = attention_encoding(embedding_dims = self.features, num_patches = 64, hidden_size = self.features, 
+                                    hidden_dropout_prob = hidden_dropout_prob, attention_heads = 8, is_first = False)
+        #self.att_mlp_norm_1 = nn.LayerNorm(self.features)
+
+        self.attention_encoding_2 = attention_encoding(embedding_dims = self.features, num_patches = 64, hidden_size = self.features, 
+                                    hidden_dropout_prob = hidden_dropout_prob, attention_heads = 8, is_first = False)
         self.att_mlp_norm = nn.LayerNorm(self.features)
 
         self.fc1 = nn.Linear(self.features, self.features, bias=True)
@@ -218,30 +228,10 @@ class HpaModel_1(nn.Module):
 
     def trainable_parameters(self):
         return (list(nn.ModuleList([self.init_layer, self.batch_norm_init, self.model, self.attention_encoding,
-                    self.att_mlp_norm, self.fc1, self.att_block]).parameters()), 
+                    self.att_mlp_norm, self.attention_encoding_1, self.attention_encoding_2, self.fc1,
+                     self.att_block]).parameters()), 
                 list(nn.ModuleList([self.fc1, self.att_block]).parameters()))
     
-    def extract_features(self, x):
-        batch_size, cells, C, H, W = x.size()
-        c_in = self.transform(x.view(batch_size * cells, C, H, W))
-        #print('input c_in ',c_in.shape)
-        c_in = F.relu(self.batch_norm_init(self.init_layer(c_in)))
-        #print('init layer c_in ',c_in.shape)
-        if 'efficientnet' in self.base_model_name:
-            spe = self.model.extract_features(c_in)
-        else:
-            spe = self.model(c_in)
-        spe = F.avg_pool2d(spe, spe.size()[2:]).squeeze()
-
-        return spe.contiguous().view(batch_size, cells, -1)
-    
-    def attention_section(self,spe):
-        spe = F.relu(self.fc1(F.dropout(spe, p=self.spe_drop, training=self.training))).permute(0,2,1)
-        #print('spe shape ',spe.shape)
-        final_output, norm_att, cell_pred = self.att_block(F.dropout(spe, p=self.att_drop, training=self.training))
-        cell_pred = torch.sigmoid(cell_pred)
-        return {'final_output':final_output, 'cell_pred':cell_pred}
-
 
     def forward(self, x):
         batch_size, cells, C, H, W = x.size()
@@ -256,6 +246,8 @@ class HpaModel_1(nn.Module):
         # attention pooling
         #print('spe shape ',spe.shape)
         spe = self.attention_encoding(spe)
+        spe = self.attention_encoding_1(spe)
+        spe = self.attention_encoding_2(spe)
         spe = self.att_mlp_norm(spe).permute(1, 0, 2)
 
         #print('att shape ',spe.shape)
