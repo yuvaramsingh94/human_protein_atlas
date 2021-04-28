@@ -285,6 +285,8 @@ class HpaModel_1(nn.Module):
         self.batch_norm_init = nn.BatchNorm2d(3)
         self.down_conv = nn.Conv2d(in_channels=self.features, out_channels=self.feature_red, kernel_size=1, stride=1,bias= False)
         self.batch_norm_down = nn.BatchNorm2d(self.feature_red)
+        ## num_patches = 64 for 256
+        ## num_patches = 144 for 380
         self.attention_encoding = attention_encoding(embedding_dims = self.feature_red, num_patches = 64, hidden_size = self.feature_red, 
                                     hidden_dropout_prob = hidden_dropout_prob, attention_heads = 8, is_first = True)
         self.att_mlp_norm = nn.LayerNorm(self.feature_red)
@@ -354,9 +356,19 @@ class HpaModel_2(nn.Module):
         self.transform=transforms.Compose([Normalize(mean= mean_list,
                               std= std_list,
                               device = device)])
-        base_model = torch.hub.load('pytorch/vision', base_model_name, pretrained=pretrained)
-        layers = list(base_model.children())[:-1]
-        self.model = nn.Sequential(*layers)
+        if 'efficientnet' in self.base_model_name:
+            self.model = EfficientNet.from_pretrained(self.base_model_name)#torch.hub.load('lukemelas/EfficientNet-PyTorch', self.base_model_name, pretrained=pretrained)
+            #print(self.model)
+        elif 'resnet' in self.base_model_name:
+            base_model = torch.hub.load('pytorch/vision', base_model_name, pretrained=pretrained)
+            layers = list(base_model.children())[:-1]
+            self.model = nn.Sequential(*layers)
+        else:
+            base_model = torch.hub.load('zhanghang1989/ResNeSt', self.base_model_name, pretrained=pretrained) 
+            #print('the list ',list(base_model.children()))
+            layers = list(base_model.children())[:-2]
+            self.model = nn.Sequential(*layers)
+
         self.init_layer = nn.Conv2d(in_channels=5, out_channels=3, kernel_size=1, stride=1,bias= False)
         self.batch_norm_init = nn.BatchNorm2d(3)
         self.fc1 = nn.Linear(features, features, bias=True)
@@ -395,7 +407,7 @@ class HpaModel_2(nn.Module):
         return {'final_output':final_output, 'cell_pred':cell_pred}
 
 
-    def forward(self, x, mask):
+    def forward(self, x):
         batch_size, cells, C, H, W = x.size()
         c_in = self.transform(x.view(batch_size * cells, C, H, W))
         #print('input c_in ',c_in.shape)
@@ -408,11 +420,11 @@ class HpaModel_2(nn.Module):
         spe = F.avg_pool2d(spe, spe.size()[2:]).squeeze()
         #print('enc shape ',spe.shape)
         #print('mask ',mask)
-        spe = spe.contiguous().view(batch_size, cells, -1)[:,:mask,:]
+        spe = spe.contiguous().view(batch_size, cells, -1)
         
         #print('spe shape ',spe.shape)
         spe = F.relu(self.fc1(F.dropout(spe, p=0.5, training=self.training))).permute(0,2,1)
         #print('spe shape ',spe.shape)
         final_output, norm_att, cell_pred = self.att_block(F.dropout(spe, p=0.5, training=self.training))
-        cell_pred = torch.sigmoid(cell_pred)
+        #cell_pred = torch.sigmoid(cell_pred)
         return {'final_output':final_output, 'cell_pred':cell_pred}

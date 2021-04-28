@@ -12,8 +12,8 @@ import cv2
 train_df = pd.read_csv('data/train_ext/extra_data_full.csv')
 
 AREA = 40000
-version = 'v6'
-SIZE = 256
+version = 'v7'
+SIZE = 380
 BUFFER = 20#pix
 
 def img_splitter(im_tok):
@@ -92,7 +92,7 @@ img_token_list = train_df['ID'].values
 #    img_splitter(i)
 if not os.path.exists(f"data/train_h5_{SIZE}_{AREA}_{version}"):
     os.mkdir(f"data/train_h5_{SIZE}_{AREA}_{version}")
-Parallel(n_jobs=10, verbose=5)(# job -1
+Parallel(n_jobs=20, verbose=5)(# job -1
         delayed(img_splitter)(
             im_tok,
         )

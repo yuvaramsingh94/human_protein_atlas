@@ -1,7 +1,7 @@
 
 import torch
 from utils import set_seed, score_metrics, hpa_dataset_v1, focal_loss, ImprovedPANNsLoss, score_pr
-from model import HpaModel, HpaModel_1#, HpaModel_1, HpaModel_2
+from model import HpaModel, HpaModel_1, HpaModel_2#, HpaModel_1, HpaModel_2
 import pandas as pd
 import os
 import numpy as np
@@ -19,6 +19,7 @@ import random
 # https://github.com/albumentations-team/albumentations/blob/master/albumentations/augmentations/transforms.py
 import albumentations as albu
 from augmix import RandomAugMix
+from warmup_scheduler import GradualWarmupScheduler
 from torch.backends import cudnn
 cudnn.benchmark = True
 
@@ -328,11 +329,23 @@ def run(fold):
     
 
     # Scheduler
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCH)
+    #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCH)
+
+    # this is warmup with cosine LR
+    scheduler_cosine = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCH - 5)
+    scheduler = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=5, after_scheduler=scheduler_cosine)
+
+    ## just because of warmup
+    #optimizer.zero_grad()
+    #optimizer.step()
 
     best_val_loss = 10000.0
     improvement_tracker = 0
     for epoch in range (EPOCH):
+        #since warmup
+        scheduler.step()
+        
+        #we will start wit hsteping the sheduler first
         train_loss = train(model,train_dataloader,optimizer,criterion)
         #train_loss = 0.
         val_loss,scores_val = validation(model,valid_dataloader,criterion)
@@ -349,7 +362,7 @@ def run(fold):
         print('mean ',avg_pr.mean())
         writer.add_scalars('avg_precision', scores_val['avg_precision'], epoch)
         writer.add_scalar('mean_AP', avg_pr.mean(), epoch)
-
+        
         for param_group in optimizer.param_groups:
             #print('this is param_group ',param_group)
             writer.add_scalar('LR',param_group["lr"],epoch)
@@ -369,6 +382,7 @@ def run(fold):
             #torch.save( model.state_dict(),
             #            f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_F1_{fold}.pth",)
         '''
+        
         if val_loss < best_val_loss:
             improvement_tracker = 0
             print(f"saving as we have {val_loss} val_loss which is improvement over {best_val_loss}")
@@ -381,9 +395,9 @@ def run(fold):
             improvement_tracker += 1
         print('improvement_tracker ',improvement_tracker)
         #early stoping
-        if improvement_tracker > 4:# if we are not improving for more than 6 
+        if improvement_tracker > 4 and epoch > 7:# if we are not improving for more than 6 
             break
-
+        
     ### now we do the master check once . it should be slow so we do it once
     print("### Training ended ###")
     del model

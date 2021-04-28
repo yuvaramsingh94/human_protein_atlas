@@ -12,8 +12,8 @@ import cv2
 train_df = pd.read_csv('data/train.csv')
 
 AREA = 40000
-version = 'v6'
-SIZE = 256
+version = 'v7'
+SIZE = 380
 BUFFER = 20#pix
 
 def img_splitter(im_tok):
