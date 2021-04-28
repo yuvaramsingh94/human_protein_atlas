@@ -321,10 +321,10 @@ class HpaModel_1(nn.Module):
         c_in = F.relu(self.batch_norm_init(self.init_layer(c_in)))
         #print('init layer c_in ',c_in.shape)
 
-        #if 'efficientnet' in self.base_model_name:
-        spe = self.model.extract_features(c_in)
-        #else:
-        #spe = self.model(c_in)
+        if 'efficientnet' in self.base_model_name:
+            spe = self.model.extract_features(c_in)
+        else:
+            spe = self.model(c_in)
         spe = F.relu(self.batch_norm_down(self.down_conv(spe)))
         # attention pooling
         #print('spe shape ',spe.shape)
