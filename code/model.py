@@ -185,12 +185,14 @@ class HpaModel_1(nn.Module):
         self.features = features
         self.spe_drop = spe_drop
         self.att_drop = att_drop
+        '''
         mean_list = [0.083170892049318, 0.08627143702844145, 0.05734662013795027, 0.06582942296076659,0.0]
         std_list = [0.13561066140407024, 0.13301454127989584, 0.09142918497144226, 0.15651865713966945,1.]
         self.transform=transforms.Compose([Normalize(mean= mean_list,
                               std= std_list,
                               device = device)])
-
+        '''
+        self.input_batchnorm = nn.BatchNorm2d(5)
         if 'efficientnet' in self.base_model_name:
             self.model = EfficientNet.from_pretrained(self.base_model_name)#torch.hub.load('lukemelas/EfficientNet-PyTorch', self.base_model_name, pretrained=pretrained)
             #print(self.model)
@@ -209,13 +211,14 @@ class HpaModel_1(nn.Module):
         self.attention_encoding = attention_encoding(embedding_dims = self.features, num_patches = 64, hidden_size = self.features, 
                                     hidden_dropout_prob = hidden_dropout_prob, attention_heads = 8, is_first = True)
         
-
+        '''
         self.attention_encoding_1 = attention_encoding(embedding_dims = self.features, num_patches = 64, hidden_size = self.features, 
                                     hidden_dropout_prob = hidden_dropout_prob, attention_heads = 8, is_first = False)
         #self.att_mlp_norm_1 = nn.LayerNorm(self.features)
 
         self.attention_encoding_2 = attention_encoding(embedding_dims = self.features, num_patches = 64, hidden_size = self.features, 
                                     hidden_dropout_prob = hidden_dropout_prob, attention_heads = 8, is_first = False)
+        '''
         self.att_mlp_norm = nn.LayerNorm(self.features)
 
         self.fc1 = nn.Linear(self.features, self.features, bias=True)
@@ -228,14 +231,15 @@ class HpaModel_1(nn.Module):
 
     def trainable_parameters(self):
         return (list(nn.ModuleList([self.init_layer, self.batch_norm_init, self.model, self.attention_encoding,
-                    self.att_mlp_norm, self.attention_encoding_1, self.attention_encoding_2, self.fc1,
+                    self.att_mlp_norm,  self.fc1,
                      self.att_block]).parameters()), 
                 list(nn.ModuleList([self.fc1, self.att_block]).parameters()))
     
 
     def forward(self, x):
         batch_size, cells, C, H, W = x.size()
-        c_in = self.transform(x.view(batch_size * cells, C, H, W))
+        c_in = self.input_batchnorm(x.view(batch_size * cells, C, H, W))
+        #c_in = self.transform(x.view(batch_size * cells, C, H, W))
         #print('input c_in ',c_in.shape)
         c_in = F.relu(self.batch_norm_init(self.init_layer(c_in)))
         #print('init layer c_in ',c_in.shape)
@@ -246,8 +250,8 @@ class HpaModel_1(nn.Module):
         # attention pooling
         #print('spe shape ',spe.shape)
         spe = self.attention_encoding(spe)
-        spe = self.attention_encoding_1(spe)
-        spe = self.attention_encoding_2(spe)
+        #spe = self.attention_encoding_1(spe)
+        #spe = self.attention_encoding_2(spe)
         spe = self.att_mlp_norm(spe).permute(1, 0, 2)
 
         #print('att shape ',spe.shape)

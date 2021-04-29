@@ -19,6 +19,7 @@ import random
 # https://github.com/albumentations-team/albumentations/blob/master/albumentations/augmentations/transforms.py
 import albumentations as albu
 from augmix import RandomAugMix
+from warmup_scheduler import GradualWarmupScheduler
 from torch.backends import cudnn
 cudnn.benchmark = True
 
@@ -327,31 +328,21 @@ def run(fold):
     
 
     # Scheduler
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCH)
+    scheduler_cosine = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCH - 5)
+    scheduler = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=5, after_scheduler=scheduler_cosine)
 
     
     best_val_loss = 10000.0
     improvement_tracker = 0
     for epoch in range (EPOCH):
+
+        #since warmup
+        scheduler.step()
+        
         train_loss = train(model,train_dataloader,optimizer,criterion)
         val_loss,scores_val = validation(model,valid_dataloader,criterion)
         
-        '''
-        precision_ = scores_val['precision'] 
-        recall_ = scores_val['recall']
-        auc_pr_ = scores_val['auc']
-        
-        val_precision = dict()
-        val_recall = dict()
-        val_auc_pr = dict()
-
-        for nk in range(int(config['general']['classes'])):
-
-            val_precision[nk] = precision_[nk]
-            val_recall[nk] = recall_[nk]
-            val_auc_pr[nk] = auc_pr_[nk]
-        '''
-        scheduler.step()
+        #scheduler.step()
         print('EPOCH ',epoch)
 
         writer.add_scalar('Loss/train', train_loss, epoch)
@@ -370,6 +361,7 @@ def run(fold):
         print('mean ',avg_pr.mean())
         writer.add_scalars('avg_precision', scores_val['avg_precision'], epoch)
         writer.add_scalar('mean_AP', avg_pr.mean(), epoch)
+        
         for param_group in optimizer.param_groups:
             #print('this is param_group ',param_group)
             writer.add_scalar('LR',param_group["lr"],epoch)
@@ -388,9 +380,11 @@ def run(fold):
             
             #torch.save( model.state_dict(),
             #            f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_F1_{fold}.pth",)
-        '''
+        
         torch.save( model.state_dict(),
                         f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_epoch_{epoch}.pth",)
+        '''
+        
         if val_loss < best_val_loss:
             improvement_tracker = 0
             print(f"saving as we have {val_loss} val_loss which is improvement over {best_val_loss}")
@@ -401,6 +395,7 @@ def run(fold):
                         f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/best_loss_{fold}.pth",)
         else:
             improvement_tracker += 1
+        
         print('improvement_tracker ',improvement_tracker)
         #early stoping
         if improvement_tracker > 5:# if we are not improving for more than 6 
