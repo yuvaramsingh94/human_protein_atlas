@@ -15,9 +15,9 @@ test_enc_df_1 = pd.read_csv(os.path.join(WORK_LOCATION,'stage_1.csv'))
 WORK_LOCATION = f'data/submissions/test_{"v6_6_2"}_{metric_use}/'   #effb0 one
 test_enc_df_2 = pd.read_csv(os.path.join(WORK_LOCATION,'stage_1.csv'))
 
-scale_6_6    = 1
-scale_6_6_3  = 2
-scale_6_6_2  = 2
+scale_6_6    = 1#1
+scale_6_6_3  = 2#2
+scale_6_6_2  = 3#2
 
 
 #print(test_enc_df.head())
@@ -74,4 +74,4 @@ WORK_LOCATION = f'data/submissions/test_ensamble_4/'
 
 if not os.path.exists(WORK_LOCATION):
         os.mkdir(WORK_LOCATION)
-sub.to_csv(os.path.join(WORK_LOCATION,'submission_ensamble_4_scaling_3.csv'), index=False)
+sub.to_csv(os.path.join(WORK_LOCATION,'submission_ensamble_4_scaling_5.csv'), index=False)

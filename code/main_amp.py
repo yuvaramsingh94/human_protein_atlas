@@ -349,7 +349,7 @@ def run(fold):
         train_loss = train(model,train_dataloader,optimizer,criterion)
         #train_loss = 0.
         val_loss,scores_val = validation(model,valid_dataloader,criterion)
-        scheduler.step()
+        #scheduler.step()
         print('EPOCH ',epoch)
 
         writer.add_scalar('Loss/train', train_loss, epoch)
