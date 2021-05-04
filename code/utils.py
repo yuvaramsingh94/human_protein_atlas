@@ -441,19 +441,22 @@ class hpa_dataset_v2(data.Dataset):
 
 
 class hpa_dataset_v3(data.Dataset):
-    def __init__(self, main_df, axe_df, augmentation = None, path=None,  aug_per = 0.0, cells_used = 8, label_smoothing = False, l_alp = 0.3, is_validation = False):
+    def __init__(self, main_df, selected_df, augmentation = None, path=None,  aug_per = 0.0, 
+                cells_used = 8, label_smoothing = False, l_alp = 0.3, is_validation = False, size = 224, 
+                cell_repetition = True):
         self.main_df = main_df
-        self.axe_df = axe_df
+        self.selected_df = selected_df
         self.aug_percent = aug_per
         self.augmentation = augmentation
         self.float_conv = albu.Compose([albu.ToFloat(max_value=255.,always_apply=True)])
         self.label_col = [str(i) for i in range(19)]
         self.cells_used = cells_used
         self.path = path
+        self.size = size
         self.is_validation = is_validation
         self.label_smoothing = label_smoothing
         self.l_alp = l_alp
-
+        self.cell_repetition = cell_repetition
         #self.transform = transforms.Compose([transforms.ToTensor()])
 
     def __len__(self):
@@ -462,18 +465,24 @@ class hpa_dataset_v3(data.Dataset):
     def __getitem__(self, idx):
         info = self.main_df.iloc[idx]
         ids = info["ID"]
-
-        target_vec = info[self.label_col].values.astype(np.int)
+        sel_df = self.selected_df[self.selected_df['ids']==ids]
+        #target_vec = info[self.label_col].values.astype(np.int)
 
         # lets begin
-        cell_count = len(os.listdir(os.path.join(self.path,f'{ids}')))
+        cells_list = list(sel_df['count'].values)
+        argmax_list = list(sel_df['argmax_list'].values)
+        argmax_unique = list(sel_df['argmax_list'].unique())
+        #print('thsi is usinq calue ',argmax_unique)
+        cell_count = len(cells_list)
         
         if not self.is_validation:
 
             if cell_count == self.cells_used:
                 cell_list = []
-                for i in range(1, self.cells_used + 1):
+                for i in cells_list:
+                    #print('this is ',i)
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
+                    #print(hdf5_path)
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
                         if random.random() < self.aug_percent:
@@ -482,33 +491,23 @@ class hpa_dataset_v3(data.Dataset):
                             vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
                         vv = np.dstack([vv,rf_np])
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
                 train_img = np.array(cell_list)
-                        
+            ## here is where we need to zip and find only classes that are on images          
             elif cell_count > self.cells_used:#random downsample
-                #print('lead')
-
-                #if its multilabel
-                #there is still a problem with thos approach . with replace True . lower samples gets repeated
-                if target_vec.sum() > 1:
-                    #print('filtered')
-                    count_list = self.axe_df[self.axe_df['ID'].isin([ids])].groupby('cluster').apply(lambda x: x.sample(self.cells_used,replace=True))['count'].values
-                    #print(count_list)
-                    random.shuffle(count_list) 
-                    count_list = count_list[:self.cells_used] 
-                else:
-                    count_list = [i for i in range(1, self.cells_used + 1)]
-                    random.shuffle(count_list) 
-                    count_list = count_list[:self.cells_used]                 
-
-                
-                #print(len(count_list))
+                #print('this is in greater ')
+                rand_idx = list(zip(cells_list,argmax_list))
+                #print('random idx ', rand_idx)
+                random.shuffle(rand_idx)
+                #print('random idx ', rand_idx, self.cells_used)
                 cell_list = []
-                for i in count_list:
+                label_listt = []
+                for i,l in rand_idx[:self.cells_used ]:
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
+                    label_listt.append(l)
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
                         if random.random() < self.aug_percent:
@@ -518,19 +517,19 @@ class hpa_dataset_v3(data.Dataset):
                             vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
                         vv = np.dstack([vv,rf_np])
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
                 train_img = np.array(cell_list)
-
+                argmax_unique = list(np.unique(np.array(label_listt)))
+            
             elif cell_count < self.cells_used:# add zero images
                 ##print('in the less class')
+                #print('this is in lesser ',cells_list)
                 cell_list = []
-                cell_count_list = [i for i in range(1,cell_count+1)]
-                resampled_cell_list = [random.choice(cell_count_list) for i in range(self.cells_used)]
-                #print(resampled_cell_list)
-                for i in resampled_cell_list:
+                for i in cells_list:
+                    #print(i)
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
@@ -540,82 +539,128 @@ class hpa_dataset_v3(data.Dataset):
                             vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
                         vv = np.dstack([vv,rf_np])
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
-                train_img = np.array(cell_list)
-                
-                #print('black ',target_vec)
 
-            #### label smoothening
-            if self.label_smoothing:
-                #print('sm')
-                #if target_vec.sum() == 1:
-                    #print('sum is one ',target_vec)
-                #    target_vec[-1] = 1
-                target_vec = (1. - self.l_alp) * target_vec + self.l_alp / 19
-                #target_vec[-1] = 1
-                #print(target_vec)
+                if self.cell_repetition:
+                    cell_count_lis = cells_list
+                    
+                    for i in range(self.cells_used - cell_count ):
+                        
+                        cell_choice = random.choice(cell_count_lis)
+                        
+                        #print('cell_choice ',cell_choice)
+                        hdf5_path = os.path.join(self.path,ids,f'{ids}_{cell_choice}.hdf5')
+                        with h5py.File(hdf5_path,"r") as h:
+                            vv = h['train_img'][...]
+                            if random.random() < self.aug_percent:
+                                vv = self.augmentation(image= vv)["image"]
+                            else:
+                                vv = self.float_conv(image= vv)["image"]
+                            rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
+                            #print('this is rf ', rf)
+                            rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
+                            vv = np.dstack([vv,rf_np])
+                            #print('this is vv shape ',vv.shape)
+                            cell_list.append(vv)
+
+                    train_img = np.array(cell_list)
+                else:
+                    train_img = np.array(cell_list)
+                    shape = (self.cells_used - cell_count + 1, self.size, self.size, 5)
+                    zero_arr = np.zeros(shape, dtype=float)
+                    train_img = np.concatenate([train_img, zero_arr], axis=0)
+                    target_vec[-1] = 1# as we are adding black img . negative = 1 also
+                #print('black ',target_vec)
+            target_vec = np.zeros([19])
+            for u in argmax_unique:
+                target_vec[u] = 1.
+            
+            
         else:
             if cell_count == self.cells_used:
                 cell_list = []
-                for i in range(1, self.cells_used + 1):
+                for i in cells_list:
+                    #print('this is ',i)
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
+                    #print(hdf5_path)
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
                         vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
                         vv = np.dstack([vv,rf_np])
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
                 train_img = np.array(cell_list)
-                        
+            ## here is where we need to zip and find only classes that are on images          
             elif cell_count > self.cells_used:#random downsample
-                
+
+                rand_idx = list(zip(cells_list,argmax_list))
+                #print('random idx ', rand_idx)
+                #random.shuffle(rand_idx)
+                #print('random idx ', rand_idx, self.cells_used)
                 cell_list = []
-                for i in range(1, self.cells_used + 1):
+                label_listt = []
+                for i,l in rand_idx[:self.cells_used ]:
                     hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
+                    label_listt.append(l)
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
                         vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
                         vv = np.dstack([vv,rf_np])
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
                 train_img = np.array(cell_list)
-
+                argmax_unique = list(np.unique(np.array(label_listt)))
+            
             elif cell_count < self.cells_used:# add zero images
                 ##print('in the less class')
                 cell_list = []
-                
-            
-                count = 1
-                for i in range (1,self.cells_used+1):
-                    #print(i,count)
-                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{count}.hdf5')
+                for i in cells_list:
+                    hdf5_path = os.path.join(self.path,ids,f'{ids}_{i}.hdf5')
                     with h5py.File(hdf5_path,"r") as h:
                         vv = h['train_img'][...]
-                        if random.random() < self.aug_percent:
-                            vv = self.augmentation(image= vv)["image"]
-                        else:
-                            vv = self.float_conv(image= vv)["image"]
+                        vv = self.float_conv(image= vv)["image"]
                         rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
                         #print('this is rf ', rf)
-                        rf_np = np.full(shape = (224,224), fill_value = rf)
+                        rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
                         vv = np.dstack([vv,rf_np])
                         #print('this is vv shape ',vv.shape)
                         cell_list.append(vv)
 
-                    if i%cell_count ==0:
-                        count = 1
-                    else:
-                        count += 1
-                train_img = np.array(cell_list)
+                if self.cell_repetition:
+                    cell_count_lis = cells_list
+                    for i in range(self.cells_used - cell_count):
+                        cell_choice = random.choice(cell_count_lis)
+                        hdf5_path = os.path.join(self.path,ids,f'{ids}_{cell_choice}.hdf5')
+                        with h5py.File(hdf5_path,"r") as h:
+                            vv = h['train_img'][...]
+                            vv = self.float_conv(image= vv)["image"]
+                            rf = h['protein_rf'][...] - 0.5 ##this 0.5 is to zero center the values
+                            #print('this is rf ', rf)
+                            rf_np = np.full(shape = (self.size,self.size), fill_value = rf)
+                            vv = np.dstack([vv,rf_np])
+                            #print('this is vv shape ',vv.shape)
+                            cell_list.append(vv)
+
+                    train_img = np.array(cell_list)
+                else:
+                    train_img = np.array(cell_list)
+                    shape = (self.cells_used - cell_count + 1, self.size, self.size, 5)
+                    zero_arr = np.zeros(shape, dtype=float)
+                    train_img = np.concatenate([train_img, zero_arr], axis=0)
+                    target_vec[-1] = 1# as we are adding black img . negative = 1 also
+                #print('black ',target_vec)
+            target_vec = np.zeros([19])
+            for u in argmax_unique:
+                target_vec[u] = 1.
 
             #if self.label_smoothing:
                 #print('sm')

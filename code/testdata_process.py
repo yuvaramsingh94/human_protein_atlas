@@ -256,7 +256,7 @@ model_fold_0.eval()
 model_fold_1 = HpaModel_1(classes = n_classes, device = device, 
                         base_model_name = 'resnest50', features = 2048, feature_red = 512, pretrained = False)
 
-model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_1/model_{metric_use}_{1}.pth",map_location = device))
+model_fold_1.load_state_dict(torch.load(f"{MODEL_PATH}/fold_{1}_seed_2/model_{metric_use}_{1}.pth",map_location = device))
 model_fold_1.to(device)
 model_fold_1.eval()
 

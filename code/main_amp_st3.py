@@ -1,6 +1,6 @@
 
 import torch
-from utils import set_seed, score_metrics, hpa_dataset_v1, focal_loss, ImprovedPANNsLoss, score_pr
+from utils import set_seed, score_metrics, hpa_dataset_v3, focal_loss, ImprovedPANNsLoss, score_pr
 from model import HpaModel, HpaModel_1, HpaModel_2#, HpaModel_1, HpaModel_2
 import pandas as pd
 import os
@@ -230,10 +230,10 @@ def run(fold):
     print(f'Train df {train_df.shape} valid df {valid_df.shape}')
 
     
-    train_dataset = hpa_dataset_v1(main_df = train_df, path = DATA_PATH, augmentation = aug_fn, aug_per= 0.8, 
+    train_dataset = hpa_dataset_v3(main_df = train_df, selected_df=selected_df, path = DATA_PATH, augmentation = aug_fn, aug_per= 0.8, 
                                     cells_used = cells_used,label_smoothing = config.getboolean('general','label_smoothing'),
-                                     l_alp = 0.3, size = int(config['general']['size']), cell_repetition = config.getboolean('general','cell_repetition'))
-    valid_dataset = hpa_dataset_v1(main_df = valid_df, path = DATA_PATH, cells_used = cells_used, is_validation = True, 
+                                     l_alp = 0.0, size = int(config['general']['size']), cell_repetition = config.getboolean('general','cell_repetition'))
+    valid_dataset = hpa_dataset_v3(main_df = valid_df, selected_df=selected_df, path = DATA_PATH, cells_used = cells_used, is_validation = True, 
                                 size = int(config['general']['size']), cell_repetition = config.getboolean('general','cell_repetition'))
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}"):
@@ -382,7 +382,8 @@ def run(fold):
             #torch.save( model.state_dict(),
             #            f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/model_F1_{fold}.pth",)
         '''
-        
+        torch.save( model.state_dict(),
+                        f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}/epoch_{epoch}.pth",)
         if val_loss < best_val_loss:
             improvement_tracker = 0
             print(f"saving as we have {val_loss} val_loss which is improvement over {best_val_loss}")
@@ -432,6 +433,8 @@ if __name__ == "__main__":
     print('LR ',LR, type(LR))
     print('init_linear_comb', config.getboolean('general','init_linear_comb'), type(config.getboolean('general','init_linear_comb')))
     train_base_df = pd.read_csv(config['general']['data_csv'])
+    print(train_base_df[train_base_df['ID']=='57941108-bbbe-11e8-b2ba-ac1f6b6435d0'])
+    selected_df   = pd.read_csv(config['general']['selected_csv'])
     #train_base_df = pd.read_csv('data/train_fold_v1.csv')
 
     
@@ -468,7 +471,7 @@ if __name__ == "__main__":
     #for amp
     scaler = torch.cuda.amp.GradScaler()
 
-    for fold in [3,4]:#range(FOLDS):
+    for fold in range(FOLDS):
         print('FOLD ',fold)
         print('This is the first rand no ',random.randint(2,50))
         print('This is the sec rand no ',random.randint(2,50))
