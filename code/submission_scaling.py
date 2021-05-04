@@ -10,14 +10,14 @@ SCALING = 2.
 
 WORK_LOCATION = f'data/submissions/test_{"v6_6"}_{metric_use}/'
 test_enc_df = pd.read_csv(os.path.join(WORK_LOCATION,'stage_1.csv'))
-WORK_LOCATION = f'data/submissions/test_{"v6_6_3"}_{metric_use}/'   #effb0 one
+WORK_LOCATION = f'data/submissions/test_{"v6_6_3_1"}_{metric_use}/'   #effb0 one
 test_enc_df_1 = pd.read_csv(os.path.join(WORK_LOCATION,'stage_1.csv'))
 WORK_LOCATION = f'data/submissions/test_{"v6_6_2"}_{metric_use}/'   #effb0 one
 test_enc_df_2 = pd.read_csv(os.path.join(WORK_LOCATION,'stage_1.csv'))
 
 scale_6_6    = 1#1
-scale_6_6_3  = 2#2
-scale_6_6_2  = 3#2
+scale_6_6_3_1  = 1#2
+scale_6_6_2  = 1#2
 
 
 #print(test_enc_df.head())
@@ -40,8 +40,8 @@ scale_6_6_2  = 3#2
 
 #we will see how the ensamble will work
 #predictions = test_enc_df[[str(i) for i in range(n_classes)]].values + test_enc_df_1[[str(i) for i in range(n_classes)]].values + test_enc_df_2[[str(i) for i in range(n_classes)]].values
-predictions = test_enc_df[[str(i) for i in range(n_classes)]].values * scale_6_6 + test_enc_df_1[[str(i) for i in range(n_classes)]].values * scale_6_6_3 + test_enc_df_2[[str(i) for i in range(n_classes)]].values * scale_6_6_2
-test_enc_df[[str(i) for i in range(n_classes)]] = predictions/(scale_6_6 + scale_6_6_3 + scale_6_6_2)
+predictions = test_enc_df[[str(i) for i in range(n_classes)]].values * scale_6_6 + test_enc_df_1[[str(i) for i in range(n_classes)]].values * scale_6_6_3_1 + test_enc_df_2[[str(i) for i in range(n_classes)]].values * scale_6_6_2
+test_enc_df[[str(i) for i in range(n_classes)]] = predictions/(scale_6_6 + scale_6_6_3_1 + scale_6_6_2)
 
 #test_enc_df['0'] = np.clip(test_enc_df['0'].values * SCALING, 0.0, 1.0)
 #test_enc_df['16'] = np.clip(test_enc_df['16'].values * SCALING, 0.0, 1.0)
@@ -70,8 +70,8 @@ sub = pd.read_csv('data/sample_submission.csv')
 sub = sub.drop(['PredictionString'],axis=1)
 sub = sub.merge(sub_stage_2_df, on='ID')
 
-WORK_LOCATION = f'data/submissions/test_ensamble_4/'
+WORK_LOCATION = f'data/submissions/test_ensamble_8/'
 
 if not os.path.exists(WORK_LOCATION):
         os.mkdir(WORK_LOCATION)
-sub.to_csv(os.path.join(WORK_LOCATION,'submission_ensamble_4_scaling_5.csv'), index=False)
+sub.to_csv(os.path.join(WORK_LOCATION,'submission_ensamble_8.csv'), index=False)

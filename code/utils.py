@@ -526,7 +526,7 @@ class hpa_dataset_v3(data.Dataset):
             
             elif cell_count < self.cells_used:# add zero images
                 ##print('in the less class')
-                #print('this is in lesser ',cells_list)
+                #print('this is in lesser ',cells_list, ids)
                 cell_list = []
                 for i in cells_list:
                     #print(i)
