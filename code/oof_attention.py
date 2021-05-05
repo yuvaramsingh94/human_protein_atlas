@@ -18,7 +18,7 @@ from torch.backends import cudnn
 import albumentations as albu
 cudnn.benchmarks = True
 
-fold = 2
+fold = 4
 DATA_PATH = 'data/train_h5_256_40000_v6'
 train_base_df = pd.read_csv('data/train_fold_v11.csv')
 valid_df = train_base_df[train_base_df['fold'] == fold]
