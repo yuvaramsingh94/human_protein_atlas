@@ -1,7 +1,7 @@
 
 import torch
 from utils import set_seed, score_metrics, hpa_dataset_v3, focal_loss, ImprovedPANNsLoss, score_pr
-from model import HpaModel, HpaModel_1, HpaModel_2#, HpaModel_1, HpaModel_2
+from model import HpaModel, HpaModel_1, HpaModel_3#, HpaModel_1, HpaModel_2
 import pandas as pd
 import os
 import numpy as np
@@ -44,7 +44,7 @@ def train(model,train_dataloader,optimizer,criterion):
         X = X.to(device, dtype=torch.float)
         Y = Y.to(device, dtype=torch.float)
         X = X.permute(0,1,4,2,3)
-        #print(X[:,:,:4,:,:].min(), X.max())
+        #print(X.shape)
         
         optimizer.zero_grad(set_to_none=True)#better mode
         with torch.cuda.amp.autocast():
@@ -228,13 +228,13 @@ def run(fold):
     valid_df = train_base_df[train_base_df['fold'] == fold]
 
     print(f'Train df {train_df.shape} valid df {valid_df.shape}')
-
+    print('this is use_rf ',config.getboolean('general','use_rf'))
     
     train_dataset = hpa_dataset_v3(main_df = train_df, selected_df=selected_df, path = DATA_PATH, augmentation = aug_fn, aug_per= 0.8, 
                                     cells_used = cells_used,label_smoothing = config.getboolean('general','label_smoothing'),
-                                     l_alp = 0.0, size = int(config['general']['size']), cell_repetition = config.getboolean('general','cell_repetition'))
+                                     l_alp = 0.0, size = int(config['general']['size']), cell_repetition = config.getboolean('general','cell_repetition'), use_rf = config.getboolean('general','use_rf') )
     valid_dataset = hpa_dataset_v3(main_df = valid_df, selected_df=selected_df, path = DATA_PATH, cells_used = cells_used, is_validation = True, 
-                                size = int(config['general']['size']), cell_repetition = config.getboolean('general','cell_repetition'))
+                                size = int(config['general']['size']), cell_repetition = config.getboolean('general','cell_repetition'), use_rf = config.getboolean('general','use_rf') )
 
     if not os.path.exists(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}"):
         os.mkdir(f"weights/{WEIGHT_SAVE}/fold_{fold}_seed_{SEED}")
@@ -307,11 +307,14 @@ def run(fold):
                             att_drop = float(config['general']['att_drop']),
                             hidden_dropout_prob = float(config['general']['hidden_dropout_prob']))
         model = model.to(device)
-    elif config['general']['model'] == 'HpaModel':
+    elif config['general']['model'] == 'HpaModel_3':
         print('using ',config['general']['model'])
-        model = HpaModel(classes = int(config['general']['classes']), device = device, 
+        model = HpaModel_3(classes = int(config['general']['classes']), device = device, 
                             base_model_name = config['general']['pretrained_model'], 
-                            features = int(config['general']['feature']), pretrained = True,)
+                            features = int(config['general']['feature']), pretrained = True,
+                            spe_drop = float(config['general']['spe_drop']), 
+                            att_drop = float(config['general']['att_drop']),
+                            hidden_dropout_prob = float(config['general']['hidden_dropout_prob']))
         model = model.to(device)
     elif config['general']['model'] == 'HpaModel_2':
         print('using ',config['general']['model'])
